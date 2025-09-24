@@ -394,6 +394,111 @@ export type Database = {
           },
         ]
       }
+      supplier_leads: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          lead_id: string
+          offered_at: string
+          price: number | null
+          purchased_at: string | null
+          status: string
+          supplier_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          lead_id: string
+          offered_at?: string
+          price?: number | null
+          purchased_at?: string | null
+          status?: string
+          supplier_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          lead_id?: string
+          offered_at?: string
+          price?: number | null
+          purchased_at?: string | null
+          status?: string
+          supplier_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_leads_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_leads_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          payment_method: string
+          payment_status: string
+          stripe_payment_intent_id: string | null
+          supplier_id: string
+          supplier_lead_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          payment_method?: string
+          payment_status?: string
+          stripe_payment_intent_id?: string | null
+          supplier_id: string
+          supplier_lead_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          payment_method?: string
+          payment_status?: string
+          stripe_payment_intent_id?: string | null
+          supplier_id?: string
+          supplier_lead_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_payments_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_payments_supplier_lead_id_fkey"
+            columns: ["supplier_lead_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           attivo: boolean
