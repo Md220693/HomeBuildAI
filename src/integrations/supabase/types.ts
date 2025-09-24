@@ -106,15 +106,18 @@ export type Database = {
       }
       leads: {
         Row: {
+          assignment_type: string | null
           capitolato_data: Json | null
           confidence: number | null
           cost_estimate_max: number | null
           cost_estimate_min: number | null
           created_at: string
+          current_assignments: number | null
           disclaimer: string | null
           foto_urls: string[] | null
           id: string
           interview_data: Json | null
+          max_assignments: number | null
           otp_attempts: number | null
           otp_code: string | null
           otp_expires_at: string | null
@@ -127,15 +130,18 @@ export type Database = {
           user_contact: Json | null
         }
         Insert: {
+          assignment_type?: string | null
           capitolato_data?: Json | null
           confidence?: number | null
           cost_estimate_max?: number | null
           cost_estimate_min?: number | null
           created_at?: string
+          current_assignments?: number | null
           disclaimer?: string | null
           foto_urls?: string[] | null
           id?: string
           interview_data?: Json | null
+          max_assignments?: number | null
           otp_attempts?: number | null
           otp_code?: string | null
           otp_expires_at?: string | null
@@ -148,15 +154,18 @@ export type Database = {
           user_contact?: Json | null
         }
         Update: {
+          assignment_type?: string | null
           capitolato_data?: Json | null
           confidence?: number | null
           cost_estimate_max?: number | null
           cost_estimate_min?: number | null
           created_at?: string
+          current_assignments?: number | null
           disclaimer?: string | null
           foto_urls?: string[] | null
           id?: string
           interview_data?: Json | null
+          max_assignments?: number | null
           otp_attempts?: number | null
           otp_code?: string | null
           otp_expires_at?: string | null
@@ -719,8 +728,16 @@ export type Database = {
         }
         Returns: Json
       }
+      auto_assign_lead_to_suppliers: {
+        Args: { lead_uuid: string }
+        Returns: number
+      }
       create_subscribers_backup: {
         Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      extract_cap_from_location: {
+        Args: { interview_data: Json }
         Returns: string
       }
       get_current_user_role: {

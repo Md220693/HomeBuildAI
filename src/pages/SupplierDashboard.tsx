@@ -54,6 +54,9 @@ interface SupplierLead {
     cost_estimate_max?: number;
     user_contact?: any;
     created_at: string;
+    assignment_type?: string;
+    max_assignments?: number;
+    current_assignments?: number;
   };
 }
 
@@ -127,7 +130,10 @@ const SupplierDashboard = () => {
             cost_estimate_min,
             cost_estimate_max,
             user_contact,
-            created_at
+            created_at,
+            assignment_type,
+            max_assignments,
+            current_assignments
           )
         `)
         .eq('supplier_id', supplier?.id)
@@ -463,10 +469,82 @@ const LeadCard = ({ supplierLead, showContacts }: { supplierLead: SupplierLead; 
   const isExpired = new Date(supplierLead.expires_at) < new Date();
   
   const handlePurchaseLead = async () => {
-    toast({
-      title: "Funzionalità in arrivo",
-      description: "L'acquisto dei lead sarà disponibile presto"
-    });
+    try {
+      // Check if lead can still be purchased
+      const { data: leadData, error: leadError } = await supabase
+        .from('leads')
+        .select('assignment_type, max_assignments, current_assignments')
+        .eq('id', lead.id)
+        .single();
+
+      if (leadError) throw leadError;
+
+      // Check purchase eligibility
+      if (leadData.assignment_type === 'exclusive' && leadData.current_assignments > 0) {
+        toast({
+          variant: "destructive",
+          title: "Lead non disponibile",
+          description: "Questo lead è già stato acquistato in esclusiva"
+        });
+        return;
+      }
+
+      if (leadData.assignment_type === 'multi' && leadData.current_assignments >= leadData.max_assignments) {
+        toast({
+          variant: "destructive", 
+          title: "Lead non disponibile",
+          description: `Raggiunto il limite massimo di ${leadData.max_assignments} acquisti per questo lead`
+        });
+        return;
+      }
+
+      // Update supplier_lead status to purchased
+      const { error: purchaseError } = await supabase
+        .from('supplier_leads')
+        .update({ 
+          status: 'purchased',
+          purchased_at: new Date().toISOString()
+        })
+        .eq('id', supplierLead.id);
+
+      if (purchaseError) throw purchaseError;
+
+      // Increment lead assignments count
+      const { error: updateError } = await supabase
+        .from('leads')
+        .update({ 
+          current_assignments: leadData.current_assignments + 1
+        })
+        .eq('id', lead.id);
+
+      if (updateError) throw updateError;
+
+      // If exclusive lead, mark all other assignments as expired
+      if (leadData.assignment_type === 'exclusive') {
+        await supabase
+          .from('supplier_leads')
+          .update({ status: 'expired' })
+          .eq('lead_id', lead.id)
+          .neq('id', supplierLead.id)
+          .eq('status', 'offered');
+      }
+
+      toast({
+        title: "Lead acquistato!",
+        description: "Hai acquistato con successo questo lead. Ora puoi vedere i contatti del cliente."
+      });
+
+      // Refresh leads
+      window.location.reload();
+
+    } catch (error) {
+      console.error('Error purchasing lead:', error);
+      toast({
+        variant: "destructive",
+        title: "Errore nell'acquisto",
+        description: "Si è verificato un errore durante l'acquisto del lead"
+      });
+    }
   };
 
   const formatCurrency = (amount?: number) => {
@@ -561,16 +639,25 @@ const LeadCard = ({ supplierLead, showContacts }: { supplierLead: SupplierLead; 
           </div>
         </div>
 
-        {/* Informazioni sui tempi */}
+        {/* Informazioni sui tempi e tipo di lead */}
         <div className="flex justify-between items-center pt-2 border-t">
           <div className="text-xs text-muted-foreground">
             Offerto il {new Date(supplierLead.offered_at).toLocaleDateString('it-IT')}
           </div>
-          {supplierLead.status === 'offered' && !isExpired && (
-            <div className="text-xs text-muted-foreground">
-              Scade il {new Date(supplierLead.expires_at).toLocaleDateString('it-IT')}
-            </div>
-          )}
+          <div className="flex items-center space-x-2">
+            {lead.assignment_type === 'exclusive' ? (
+              <Badge variant="destructive" className="text-xs">Esclusivo</Badge>
+            ) : (
+              <Badge variant="secondary" className="text-xs">
+                Multi ({lead.current_assignments || 0}/{lead.max_assignments || 5})
+              </Badge>
+            )}
+            {supplierLead.status === 'offered' && !isExpired && (
+              <span className="text-xs text-muted-foreground">
+                Scade il {new Date(supplierLead.expires_at).toLocaleDateString('it-IT')}
+              </span>
+            )}
+          </div>
           {supplierLead.purchased_at && (
             <div className="text-xs text-muted-foreground">
               Acquistato il {new Date(supplierLead.purchased_at).toLocaleDateString('it-IT')}
