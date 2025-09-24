@@ -10,6 +10,7 @@ import Capitolato from "./pages/Capitolato";
 import SupplierAuth from "./pages/SupplierAuth";
 import SupplierOnboarding from "./pages/SupplierOnboarding";
 import SupplierDashboard from "./pages/SupplierDashboard";
+import AdminConsole from "./pages/AdminConsole";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 
@@ -37,6 +38,13 @@ const App = () => (
           <Route path="/fornitori/dashboard" element={
             <ProtectedRoute>
               <SupplierDashboard />
+            </ProtectedRoute>
+          } />
+          
+          {/* Admin Routes */}
+          <Route path="/admin" element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminConsole />
             </ProtectedRoute>
           } />
           
