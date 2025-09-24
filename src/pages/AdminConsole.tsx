@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAdminStats } from "@/hooks/useAdminStats";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import AdminNotifications from "@/components/admin/AdminNotifications";
 const AdminConsole = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const navigate = useNavigate();
+  const stats = useAdminStats();
 
   return (
     <div className="min-h-screen bg-background">
@@ -78,8 +80,13 @@ const AdminConsole = () => {
                   <CardTitle className="text-sm font-medium">Lead Totali</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">245</div>
-                  <p className="text-xs text-muted-foreground">+12% dal mese scorso</p>
+                  <div className="text-2xl font-bold">
+                    {stats.loading ? "..." : stats.totalLeads.toLocaleString()}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {stats.loading ? "Caricamento..." : 
+                     `${stats.leadsGrowth >= 0 ? '+' : ''}${stats.leadsGrowth}% dal mese scorso`}
+                  </p>
                 </CardContent>
               </Card>
               
@@ -88,8 +95,13 @@ const AdminConsole = () => {
                   <CardTitle className="text-sm font-medium">Fornitori Attivi</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">67</div>
-                  <p className="text-xs text-muted-foreground">+3 questa settimana</p>
+                  <div className="text-2xl font-bold">
+                    {stats.loading ? "..." : stats.activeSuppliers}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {stats.loading ? "Caricamento..." : 
+                     `${stats.suppliersGrowth >= 0 ? '+' : ''}${stats.suppliersGrowth}% dal mese scorso`}
+                  </p>
                 </CardContent>
               </Card>
               
@@ -98,8 +110,13 @@ const AdminConsole = () => {
                   <CardTitle className="text-sm font-medium">Ricavi Mensili</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">€3,240</div>
-                  <p className="text-xs text-muted-foreground">+8% dal mese scorso</p>
+                  <div className="text-2xl font-bold">
+                    {stats.loading ? "..." : `€${stats.monthlyRevenue.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {stats.loading ? "Caricamento..." : 
+                     `${stats.revenueGrowth >= 0 ? '+' : ''}${stats.revenueGrowth}% dal mese scorso`}
+                  </p>
                 </CardContent>
               </Card>
               
@@ -108,8 +125,13 @@ const AdminConsole = () => {
                   <CardTitle className="text-sm font-medium">Tasso Conversione</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">24.3%</div>
-                  <p className="text-xs text-muted-foreground">+2.1% dal mese scorso</p>
+                  <div className="text-2xl font-bold">
+                    {stats.loading ? "..." : `${stats.conversionRate}%`}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {stats.loading ? "Caricamento..." : 
+                     `${stats.conversionGrowth >= 0 ? '+' : ''}${stats.conversionGrowth}% dal mese scorso`}
+                  </p>
                 </CardContent>
               </Card>
             </div>
