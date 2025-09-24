@@ -266,6 +266,58 @@ const Capitolato = () => {
     );
   }
 
+  // Show OTP validation screen if capitolato is ready but not verified
+  if (!isDownloadReady) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle">
+        <Header />
+        
+        <main className="container py-12">
+          <div className="max-w-4xl mx-auto">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
+              <h1 className="text-4xl font-bold text-foreground mb-4">
+                Capitolato Tecnico Pronto!
+              </h1>
+              <p className="text-xl text-muted-foreground mb-6">
+                Il tuo capitolato personalizzato è stato generato. Inserisci i tuoi dati per visualizzarlo e scaricarlo.
+              </p>
+              
+              {/* Cost Preview */}
+              <Card className="p-6 mb-8 bg-gradient-accent">
+                <div className="grid md:grid-cols-2 gap-6 text-center">
+                  <div>
+                    <Euro className="h-8 w-8 mx-auto mb-2 text-accent-foreground" />
+                    <h3 className="text-lg font-semibold text-accent-foreground mb-1">Stima Costi</h3>
+                    <p className="text-2xl font-bold text-accent-foreground">
+                      {formatCurrency(leadData.cost_estimate_min)} - {formatCurrency(leadData.cost_estimate_max)}
+                    </p>
+                  </div>
+                  <div>
+                    <TrendingUp className="h-8 w-8 mx-auto mb-2 text-accent-foreground" />
+                    <h3 className="text-lg font-semibold text-accent-foreground mb-1">Affidabilità</h3>
+                    <Badge className={`text-sm px-3 py-1 ${getConfidenceColor(leadData.confidence)}`}>
+                      {Math.round(leadData.confidence * 100)}% di confidenza
+                    </Badge>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {/* Contact Form for Validation */}
+            <div className="mb-8">
+              <ContactForm 
+                leadId={leadId!} 
+                onSuccess={handleContactSuccess}
+              />
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <Header />
@@ -306,22 +358,12 @@ const Capitolato = () => {
                     className="mt-1"
                     onClick={downloadPDF}
                   >
-                    {isDownloadReady ? "Scarica PDF" : "Inserisci Dati"}
+                    Scarica PDF
                   </Button>
                 </div>
               </div>
             </Card>
           </div>
-
-          {/* Contact Form for PDF Download */}
-          {showContactForm && (
-            <div className="mb-8">
-              <ContactForm 
-                leadId={leadId!} 
-                onSuccess={handleContactSuccess}
-              />
-            </div>
-          )}
 
           {/* Capitolato Sections */}
           <div className="grid gap-6 mb-8">
