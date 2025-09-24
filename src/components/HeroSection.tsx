@@ -32,8 +32,13 @@ const HeroSection = () => {
               <Home className="group-hover:rotate-12 transition-bounce" />
               Inizia la tua ristrutturazione
             </Button>
-            <Button variant="outline" size="xl" className="bg-white/10 text-white border-white/30 hover:bg-white/20">
-              Vedi esempio
+            <Button 
+              variant="outline" 
+              size="xl" 
+              className="bg-white/10 text-white border-white/30 hover:bg-white/20"
+              onClick={() => navigate('/fornitori/auth')}
+            >
+              Area Fornitori
             </Button>
           </div>
           

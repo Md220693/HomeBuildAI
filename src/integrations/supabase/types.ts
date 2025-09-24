@@ -394,6 +394,57 @@ export type Database = {
           },
         ]
       }
+      suppliers: {
+        Row: {
+          attivo: boolean
+          codice_condotta_accettato: boolean
+          contatto_referente: string
+          created_at: string
+          email: string
+          id: string
+          onboarding_completato: boolean
+          partita_iva: string
+          ragione_sociale: string
+          sito_web: string | null
+          telefono: string
+          updated_at: string
+          user_id: string
+          zona_operativa: string[]
+        }
+        Insert: {
+          attivo?: boolean
+          codice_condotta_accettato?: boolean
+          contatto_referente: string
+          created_at?: string
+          email: string
+          id?: string
+          onboarding_completato?: boolean
+          partita_iva: string
+          ragione_sociale: string
+          sito_web?: string | null
+          telefono: string
+          updated_at?: string
+          user_id: string
+          zona_operativa: string[]
+        }
+        Update: {
+          attivo?: boolean
+          codice_condotta_accettato?: boolean
+          contatto_referente?: string
+          created_at?: string
+          email?: string
+          id?: string
+          onboarding_completato?: boolean
+          partita_iva?: string
+          ragione_sociale?: string
+          sito_web?: string | null
+          telefono?: string
+          updated_at?: string
+          user_id?: string
+          zona_operativa?: string[]
+        }
+        Relationships: []
+      }
       system_settings: {
         Row: {
           created_at: string

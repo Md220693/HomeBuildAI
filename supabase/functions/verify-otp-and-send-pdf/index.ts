@@ -159,20 +159,19 @@ serve(async (req) => {
       throw new Error('Failed to update lead status');
     }
 
-    // Generate PDF content
+    // Generate PDF and save URL
     console.log('Generating PDF for lead:', leadId);
     
-    // Call PDF generation function
     const { data: pdfData, error: pdfError } = await supabase.functions.invoke('generate-pdf', {
       body: { leadId }
     });
 
     if (pdfError || pdfData.error) {
       console.error('PDF generation error:', pdfError || pdfData.error);
-      throw new Error('Failed to generate PDF');
+      // Continue anyway - don't fail OTP verification for PDF issues
     }
 
-    const pdfUrl = pdfData.pdf_url;
+    const pdfUrl = pdfData?.pdf_url;
 
     // TODO: Replace with actual email service integration
     // For now, just log email sending
