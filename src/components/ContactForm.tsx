@@ -124,10 +124,10 @@ const ContactForm = ({ leadId, onSuccess }: ContactFormProps) => {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      toast({
-        title: "Verifica completata!",
-        description: "PDF inviato via email. Download disponibile."
-      });
+        toast({
+          title: "Stima generata con successo",
+          description: "Controlla la tua email per il capitolato PDF"
+        });
 
       onSuccess();
     } catch (error) {
@@ -177,7 +177,7 @@ const ContactForm = ({ leadId, onSuccess }: ContactFormProps) => {
       <Card className="p-6">
         <div className="flex items-center gap-3 mb-6">
           <User className="h-6 w-6 text-primary" />
-          <h2 className="text-xl font-semibold">I tuoi Dati di Contatto</h2>
+          <h2 className="text-xl font-semibold">Inserisci i tuoi dati</h2>
         </div>
 
         <form onSubmit={handleContactSubmit} className="space-y-4">
@@ -284,8 +284,8 @@ const ContactForm = ({ leadId, onSuccess }: ContactFormProps) => {
 
       <div className="text-center mb-6">
         <p className="text-muted-foreground">
-          Abbiamo inviato un codice di verifica al numero<br />
-          <strong>{contactData.telefono}</strong>
+          Inserisci i tuoi dati e verifica il numero di telefono per ricevere<br />
+          il PDF con capitolato e stima al numero <strong>{contactData.telefono}</strong>
         </p>
         
         {/* Development only - show debug OTP */}

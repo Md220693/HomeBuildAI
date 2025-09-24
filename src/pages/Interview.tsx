@@ -40,7 +40,7 @@ const Interview = () => {
     // Start with AI greeting
     setMessages([{
       role: 'assistant',
-      content: 'Ciao! Sono il consulente AI di BuildHomeAI. Ti farò alcune domande per capire meglio il tuo progetto di ristrutturazione e fornirti un capitolato personalizzato. Iniziamo: che tipo di immobile devi ristrutturare?'
+      content: 'Ciao! Sono il consulente AI di BuildHomeAI. Ti farò alcune domande per capire meglio il tuo progetto di ristrutturazione e fornirti un capitolato personalizzato basato su dati reali del settore edilizio. Iniziamo: che tipo di immobile devi ristrutturare?'
     }]);
   }, [searchParams, toast, navigate]);
 
@@ -112,10 +112,10 @@ const Interview = () => {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold text-foreground mb-4">
-              Intervista AI per la Ristrutturazione
+              Consulenza AI personalizzata
             </h1>
             <p className="text-xl text-muted-foreground">
-              Il nostro consulente AI ti guiderà per raccogliere tutte le informazioni necessarie
+              Rispondi a poche domande guidate. Non serve essere esperti: l'AI ti spiega i termini tecnici e traduce le tue risposte in un capitolato comprensibile anche per le imprese.
             </p>
           </div>
 

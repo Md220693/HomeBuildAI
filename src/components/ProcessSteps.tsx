@@ -5,23 +5,23 @@ const ProcessSteps = () => {
   const steps = [
     {
       icon: Upload,
-      title: "1. Carica i tuoi file",
+      title: "1. Carica planimetria e foto",
       description: "Almeno 1 planimetria (PDF/JPG/PNG) e minimo 4 foto dell'immobile"
     },
     {
       icon: MessageSquare,
-      title: "2. Intervista AI",
-      description: "Rispondi alle domande personalizzate sulla ristrutturazione desiderata"
+      title: "2. Rispondi alle domande guidate",
+      description: "L'AI ti spiega i termini tecnici e traduce le tue risposte in un capitolato"
     },
     {
       icon: FileText,
       title: "3. Inserisci i tuoi dati",
-      description: "Nome, cognome, email, telefono e indirizzo per ricevere il capitolato"
+      description: "Nome, cognome, email, telefono per ricevere il capitolato"
     },
     {
       icon: Download,
-      title: "4. Ricevi tutto via email",
-      description: "Capitolato PDF e stima costi dopo verifica SMS"
+      title: "4. Ottieni stima affidabile",
+      description: "Capitolato PDF basato su migliaia di preventivi reali"
     }
   ];
 
@@ -33,7 +33,7 @@ const ProcessSteps = () => {
             Come funziona BuildHomeAI
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Un processo semplice e guidato per ottenere la tua consulenza personalizzata
+            Processo semplice e guidato per ottenere stima e capitolato personalizzati
           </p>
         </div>
         

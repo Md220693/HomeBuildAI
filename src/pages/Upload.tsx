@@ -159,10 +159,10 @@ const Upload = () => {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
             <h1 className="text-4xl font-bold text-foreground mb-4">
-              Carica i tuoi file
+              Carica planimetria e foto
             </h1>
             <p className="text-xl text-muted-foreground">
-              Serve almeno 1 planimetria e minimo 4 foto per iniziare l'analisi
+              Carica la planimetria e le foto di tutte le stanze. Servono per analizzare il tuo progetto e generare il capitolato personalizzato.
             </p>
           </div>
 

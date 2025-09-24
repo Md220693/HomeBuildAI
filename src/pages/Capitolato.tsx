@@ -278,10 +278,10 @@ const Capitolato = () => {
             <div className="text-center mb-8">
               <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
               <h1 className="text-4xl font-bold text-foreground mb-4">
-                Capitolato Tecnico Pronto!
+                La tua stima è pronta
               </h1>
               <p className="text-xl text-muted-foreground mb-6">
-                Il tuo capitolato personalizzato è stato generato. Inserisci i tuoi dati per visualizzarlo e scaricarlo.
+                Inserisci i tuoi dati e verifica il numero di telefono. Riceverai il PDF con il capitolato e la stima di costi basata su dati reali e migliaia di preventivi analizzati.
               </p>
               
               {/* Cost Preview */}
@@ -327,10 +327,10 @@ const Capitolato = () => {
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold text-foreground mb-4">
-              Capitolato Tecnico Personalizzato
+              La tua stima di ristrutturazione
             </h1>
             <p className="text-xl text-muted-foreground mb-6">
-              Il tuo progetto di ristrutturazione analizzato in dettaglio
+              Questa è la tua stima di ristrutturazione, generata da AI + dati del settore edilizio
             </p>
             
             {/* Cost Estimate */}
@@ -424,7 +424,7 @@ const Capitolato = () => {
               <div>
                 <h3 className="font-semibold text-yellow-800 mb-2">Importante</h3>
                 <p className="text-yellow-700">
-                  {leadData.disclaimer}
+                  La stima è indicativa e serve come base di confronto. Per realizzare i lavori puoi valutare i partner qualificati BuildHomeAI e ricevere più preventivi trasparenti. BuildHomeAI è un intermediario tecnologico. Le stime sono basate su AI + dati reali del settore e hanno valore indicativo. La responsabilità dei lavori è interamente dei fornitori.
                 </p>
               </div>
             </div>
@@ -459,7 +459,7 @@ const Capitolato = () => {
               
               <div className="space-x-4">
                 <Button variant="outline" size="lg">
-                  Richiedi Preventivo Dettagliato
+                  Trova Partner Qualificati
                 </Button>
                 <Button variant="ghost" size="lg">
                   Modifica Progetto

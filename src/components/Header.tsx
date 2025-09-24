@@ -29,7 +29,7 @@ const Header = () => {
             size="sm"
             onClick={() => navigate('/upload')}
           >
-            Inizia ora
+            Calcola subito
           </Button>
         </nav>
       </div>

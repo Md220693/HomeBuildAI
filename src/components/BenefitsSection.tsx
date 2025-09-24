@@ -5,23 +5,23 @@ const BenefitsSection = () => {
   const benefits = [
     {
       icon: Shield,
-      title: "Consulenza professionale",
-      description: "Analisi dettagliata basata su esperti del settore e algoritmi AI avanzati"
+      title: "Stime basate su dati reali",
+      description: "Modelli AI addestrati su migliaia di preventivi del settore edilizio"
     },
     {
       icon: Clock,
-      title: "Risparmia tempo",
-      description: "Ottieni in minuti quello che richiederebbe giorni di consulenze tradizionali"
+      title: "Decidi con consapevolezza",
+      description: "Perfetto quando compri casa e vuoi capire se conviene ristrutturarla"
     },
     {
       icon: Calculator,
-      title: "Stime accurate",
-      description: "Range di costi realistici basati su database aggiornati del mercato"
+      title: "Verifica i prezzi",
+      description: "Confronta preventivi ricevuti con le nostre stime di mercato"
     },
     {
       icon: Users,
-      title: "Network di fornitori",
-      description: "Accesso diretto a professionisti qualificati nella tua zona"
+      title: "Partner qualificati",
+      description: "Accesso diretto a imprese affidabili nella tua zona per realizzare i lavori"
     }
   ];
 
@@ -33,7 +33,7 @@ const BenefitsSection = () => {
             Perché scegliere BuildHomeAI
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            La tecnologia AI al servizio della tua ristrutturazione
+            AI + competenza del settore edilizio + rete partner qualificati
           </p>
         </div>
         

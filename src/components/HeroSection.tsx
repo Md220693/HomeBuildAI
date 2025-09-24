@@ -13,13 +13,13 @@ const HeroSection = () => {
       <div className="container relative z-10">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
-            Ristrutturazione Smart con
-            <span className="text-accent-light block">Intelligenza Artificiale</span>
+            Scopri subito quanto ti costa
+            <span className="text-accent-light block">ristrutturare casa</span>
           </h1>
           
           <p className="text-xl md:text-2xl mb-8 text-primary-foreground/90 leading-relaxed">
-            Carica planimetrie e foto, rispondi a un'intervista AI personalizzata e ricevi 
-            un capitolato dettagliato con stima costi in pochi minuti.
+            BuildHomeAI combina AI e competenza del settore edilizio per darti stime affidabili 
+            basate su migliaia di preventivi reali. In più ti mette in contatto con imprese qualificate.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
@@ -30,7 +30,7 @@ const HeroSection = () => {
               onClick={() => navigate('/upload')}
             >
               <Home className="group-hover:rotate-12 transition-bounce" />
-              Inizia la tua ristrutturazione
+              Calcola subito la tua ristrutturazione
             </Button>
             <Button 
               variant="outline" 
@@ -46,20 +46,20 @@ const HeroSection = () => {
           <div className="grid md:grid-cols-3 gap-6 mt-16">
             <div className="text-center p-6 bg-white/10 backdrop-blur-sm rounded-lg">
               <Zap className="h-12 w-12 text-accent-light mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Veloce</h3>
-              <p className="text-primary-foreground/80">Risultati in pochi minuti</p>
+              <h3 className="text-xl font-semibold mb-2">Carica planimetria e foto</h3>
+              <p className="text-primary-foreground/80">Analisi automatica degli spazi</p>
             </div>
             
             <div className="text-center p-6 bg-white/10 backdrop-blur-sm rounded-lg">
               <Target className="h-12 w-12 text-accent-light mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Preciso</h3>
-              <p className="text-primary-foreground/80">Stime basate su AI avanzata</p>
+              <h3 className="text-xl font-semibold mb-2">Rispondi alle domande</h3>
+              <p className="text-primary-foreground/80">L'AI ti guida passo dopo passo</p>
             </div>
             
             <div className="text-center p-6 bg-white/10 backdrop-blur-sm rounded-lg">
               <CheckCircle className="h-12 w-12 text-accent-light mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Professionale</h3>
-              <p className="text-primary-foreground/80">Capitolato dettagliato incluso</p>
+              <h3 className="text-xl font-semibold mb-2">Ottieni stima e capitolato</h3>
+              <p className="text-primary-foreground/80">Basato su migliaia di preventivi reali</p>
             </div>
           </div>
         </div>

@@ -248,7 +248,7 @@ const SupplierDashboard = () => {
             Benvenuto, {supplier.contatto_referente}
           </h1>
           <p className="text-muted-foreground">
-            Gestisci i tuoi lead e opportunità di business
+            Ricevi richieste qualificate con capitolati già pronti. Risparmia tempo e parla solo con clienti realmente interessati.
           </p>
         </div>
 

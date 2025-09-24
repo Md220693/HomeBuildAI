@@ -15,18 +15,18 @@ const Footer = () => {
               <h3 className="text-xl font-bold">BuildHomeAI</h3>
             </div>
             <p className="text-primary-foreground/80 leading-relaxed">
-              La piattaforma AI per ristrutturazioni intelligenti. 
-              Consulenza professionale in pochi minuti.
+              AI + competenza del settore edilizio per stime affidabili 
+              basate su migliaia di preventivi reali.
             </p>
           </div>
           
           <div>
             <h4 className="font-semibold mb-4">Servizi</h4>
             <ul className="space-y-2 text-primary-foreground/80">
-              <li>Analisi planimetrie</li>
-              <li>Consulenza AI personalizzata</li>
-              <li>Capitolato dettagliato</li>
-              <li>Stima costi</li>
+              <li>Analisi planimetrie con AI</li>
+              <li>Stime basate su dati reali</li>
+              <li>Capitolato tecnico dettagliato</li>
+              <li>Rete partner qualificati</li>
             </ul>
           </div>
           
