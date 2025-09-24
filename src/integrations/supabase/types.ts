@@ -115,6 +115,9 @@ export type Database = {
           foto_urls: string[] | null
           id: string
           interview_data: Json | null
+          otp_attempts: number | null
+          otp_code: string | null
+          otp_expires_at: string | null
           otp_verified_at: string | null
           planimetria_url: string | null
           scope_json: Json | null
@@ -132,6 +135,9 @@ export type Database = {
           foto_urls?: string[] | null
           id?: string
           interview_data?: Json | null
+          otp_attempts?: number | null
+          otp_code?: string | null
+          otp_expires_at?: string | null
           otp_verified_at?: string | null
           planimetria_url?: string | null
           scope_json?: Json | null
@@ -149,6 +155,9 @@ export type Database = {
           foto_urls?: string[] | null
           id?: string
           interview_data?: Json | null
+          otp_attempts?: number | null
+          otp_code?: string | null
+          otp_expires_at?: string | null
           otp_verified_at?: string | null
           planimetria_url?: string | null
           scope_json?: Json | null

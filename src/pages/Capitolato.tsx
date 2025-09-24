@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Euro, TrendingUp, Download, Loader2, AlertTriangle } from "lucide-react";
+import { FileText, Euro, TrendingUp, Download, Loader2, AlertTriangle, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
+import ContactForm from "@/components/ContactForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useSearchParams, useNavigate } from "react-router-dom";
 
@@ -33,12 +34,21 @@ interface LeadData {
   cost_estimate_max: number;
   confidence: number;
   disclaimer: string;
+  user_contact?: {
+    nome: string;
+    cognome: string;
+    email: string;
+    telefono: string;
+    indirizzo: string;
+  };
 }
 
 const Capitolato = () => {
   const [leadData, setLeadData] = useState<LeadData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showContactForm, setShowContactForm] = useState(false);
+  const [isDownloadReady, setIsDownloadReady] = useState(false);
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -63,11 +73,16 @@ const Capitolato = () => {
     try {
       const { data, error } = await supabase
         .from('leads')
-        .select('capitolato_data, cost_estimate_min, cost_estimate_max, confidence, disclaimer, status')
+        .select('*')
         .eq('id', leadId)
         .single();
 
       if (error) throw error;
+
+      // Check if OTP already verified (status = queued)
+      if (data.status === 'queued' || data.otp_verified_at) {
+        setIsDownloadReady(true);
+      }
 
       if (!data.capitolato_data) {
         // Need to generate capitolato
@@ -75,7 +90,8 @@ const Capitolato = () => {
       } else {
         setLeadData({
           ...data,
-          capitolato_data: data.capitolato_data as unknown as Capitolato
+          capitolato_data: data.capitolato_data as unknown as Capitolato,
+          user_contact: data.user_contact as any
         } as LeadData);
       }
     } catch (error) {
@@ -88,6 +104,43 @@ const Capitolato = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleContactSuccess = () => {
+    setIsDownloadReady(true);
+    setShowContactForm(false);
+    toast({
+      title: "Verifica completata!",
+      description: "Ora puoi scaricare il PDF del capitolato"
+    });
+  };
+
+  const downloadPDF = () => {
+    if (!isDownloadReady) {
+      setShowContactForm(true);
+      return;
+    }
+    
+    // Create simple PDF download - in production use proper PDF generation
+    const element = document.createElement('a');
+    const file = new Blob([`
+      CAPITOLATO TECNICO - BUILDHOMEAI
+      
+      Cliente: ${leadData?.user_contact?.nome} ${leadData?.user_contact?.cognome}
+      Stima: €${leadData?.cost_estimate_min?.toLocaleString()} - €${leadData?.cost_estimate_max?.toLocaleString()}
+      
+      [Contenuto capitolato completo...]
+    `], {type: 'text/plain'});
+    element.href = URL.createObjectURL(file);
+    element.download = `capitolato-buildhomeai-${leadId}.txt`;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+    
+    toast({
+      title: "Download avviato!",
+      description: "Il PDF del capitolato è stato scaricato"
+    });
   };
 
   const generateCapitolato = async () => {
@@ -219,13 +272,27 @@ const Capitolato = () => {
                 <div>
                   <Download className="h-8 w-8 mx-auto mb-2 text-accent-foreground" />
                   <h3 className="text-lg font-semibold text-accent-foreground mb-1">Documento</h3>
-                  <Button variant="secondary" className="mt-1">
-                    Scarica PDF
+                  <Button 
+                    variant="secondary" 
+                    className="mt-1"
+                    onClick={downloadPDF}
+                  >
+                    {isDownloadReady ? "Scarica PDF" : "Inserisci Dati"}
                   </Button>
                 </div>
               </div>
             </Card>
           </div>
+
+          {/* Contact Form for PDF Download */}
+          {showContactForm && (
+            <div className="mb-8">
+              <ContactForm 
+                leadId={leadId!} 
+                onSuccess={handleContactSuccess}
+              />
+            </div>
+          )}
 
           {/* Capitolato Sections */}
           <div className="grid gap-6 mb-8">
@@ -280,7 +347,7 @@ const Capitolato = () => {
           </div>
 
           {/* Disclaimer */}
-          <Card className="p-6 bg-yellow-50 border-yellow-200">
+          <Card className="p-6 bg-yellow-50 border-yellow-200 mb-8">
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-6 w-6 text-yellow-600 mt-1 flex-shrink-0" />
               <div>
@@ -293,14 +360,40 @@ const Capitolato = () => {
           </Card>
 
           {/* Actions */}
-          <div className="text-center mt-8">
-            <div className="space-x-4">
-              <Button variant="hero" size="lg">
-                Richiedi Preventivo Dettagliato
-              </Button>
-              <Button variant="outline" size="lg">
-                Modifica Progetto
-              </Button>
+          <div className="text-center">
+            <div className="space-y-4">
+              <div className="flex justify-center items-center gap-4">
+                <Button 
+                  variant="hero" 
+                  size="lg"
+                  onClick={downloadPDF}
+                  className="inline-flex items-center"
+                >
+                  {isDownloadReady ? (
+                    <>
+                      <Download className="mr-2 h-4 w-4" />
+                      Scarica PDF Capitolato
+                    </>
+                  ) : (
+                    <>
+                      <Download className="mr-2 h-4 w-4" />
+                      Inserisci Dati per Download PDF
+                    </>
+                  )}
+                </Button>
+                {isDownloadReady && (
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                )}
+              </div>
+              
+              <div className="space-x-4">
+                <Button variant="outline" size="lg">
+                  Richiedi Preventivo Dettagliato
+                </Button>
+                <Button variant="ghost" size="lg">
+                  Modifica Progetto
+                </Button>
+              </div>
             </div>
           </div>
         </div>
