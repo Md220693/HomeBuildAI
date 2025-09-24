@@ -119,6 +119,7 @@ export type Database = {
           otp_code: string | null
           otp_expires_at: string | null
           otp_verified_at: string | null
+          pdf_url: string | null
           planimetria_url: string | null
           scope_json: Json | null
           status: string
@@ -139,6 +140,7 @@ export type Database = {
           otp_code?: string | null
           otp_expires_at?: string | null
           otp_verified_at?: string | null
+          pdf_url?: string | null
           planimetria_url?: string | null
           scope_json?: Json | null
           status?: string
@@ -159,6 +161,7 @@ export type Database = {
           otp_code?: string | null
           otp_expires_at?: string | null
           otp_verified_at?: string | null
+          pdf_url?: string | null
           planimetria_url?: string | null
           scope_json?: Json | null
           status?: string

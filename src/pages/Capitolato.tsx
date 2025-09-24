@@ -106,41 +106,70 @@ const Capitolato = () => {
     }
   };
 
-  const handleContactSuccess = () => {
+  const handleContactSuccess = async () => {
     setIsDownloadReady(true);
     setShowContactForm(false);
+    
+    // Reload data to get updated PDF URL
+    await loadCapitolato();
+    
     toast({
       title: "Verifica completata!",
       description: "Ora puoi scaricare il PDF del capitolato"
     });
   };
 
-  const downloadPDF = () => {
+  const downloadPDF = async () => {
     if (!isDownloadReady) {
       setShowContactForm(true);
       return;
     }
     
-    // Create simple PDF download - in production use proper PDF generation
-    const element = document.createElement('a');
-    const file = new Blob([`
-      CAPITOLATO TECNICO - BUILDHOMEAI
-      
-      Cliente: ${leadData?.user_contact?.nome} ${leadData?.user_contact?.cognome}
-      Stima: €${leadData?.cost_estimate_min?.toLocaleString()} - €${leadData?.cost_estimate_max?.toLocaleString()}
-      
-      [Contenuto capitolato completo...]
-    `], {type: 'text/plain'});
-    element.href = URL.createObjectURL(file);
-    element.download = `capitolato-buildhomeai-${leadId}.txt`;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-    
-    toast({
-      title: "Download avviato!",
-      description: "Il PDF del capitolato è stato scaricato"
-    });
+    // Check if PDF URL exists in database
+    try {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('pdf_url')
+        .eq('id', leadId)
+        .single();
+
+      if (error) throw error;
+
+      if (data.pdf_url) {
+        // PDF already exists, open in new tab
+        window.open(data.pdf_url, '_blank');
+        toast({
+          title: "PDF scaricato!",
+          description: "Il capitolato è stato aperto in una nuova scheda"
+        });
+      } else {
+        // Generate PDF first
+        const { data: pdfData, error: pdfError } = await supabase.functions.invoke('generate-pdf', {
+          body: { leadId }
+        });
+
+        if (pdfError || pdfData.error) {
+          throw new Error('Errore nella generazione del PDF');
+        }
+
+        // Open the generated PDF
+        window.open(pdfData.pdf_url, '_blank');
+        toast({
+          title: "PDF generato e scaricato!",
+          description: "Il capitolato è stato creato e aperto in una nuova scheda"
+        });
+        
+        // Update local data
+        await loadCapitolato();
+      }
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      toast({
+        variant: "destructive",
+        title: "Errore nel download",
+        description: "Riprova più tardi"
+      });
+    }
   };
 
   const generateCapitolato = async () => {

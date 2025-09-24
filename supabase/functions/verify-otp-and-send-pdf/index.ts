@@ -160,11 +160,19 @@ serve(async (req) => {
     }
 
     // Generate PDF content
-    const pdfContent = generatePDFContent(lead);
+    console.log('Generating PDF for lead:', leadId);
     
-    // Convert HTML to base64 for simple PDF placeholder
-    // In production, use a proper PDF generation library
-    const pdfBase64 = btoa(unescape(encodeURIComponent(pdfContent)));
+    // Call PDF generation function
+    const { data: pdfData, error: pdfError } = await supabase.functions.invoke('generate-pdf', {
+      body: { leadId }
+    });
+
+    if (pdfError || pdfData.error) {
+      console.error('PDF generation error:', pdfError || pdfData.error);
+      throw new Error('Failed to generate PDF');
+    }
+
+    const pdfUrl = pdfData.pdf_url;
 
     // TODO: Replace with actual email service integration
     // For now, just log email sending
@@ -181,7 +189,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       success: true,
       message: 'OTP verificato! PDF inviato via email.',
-      pdf_content: pdfBase64,
+      pdf_url: pdfUrl,
       email_sent: true
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
