@@ -104,6 +104,51 @@ export type Database = {
         }
         Relationships: []
       }
+      leads: {
+        Row: {
+          capitolato_data: Json | null
+          cost_estimate_max: number | null
+          cost_estimate_min: number | null
+          created_at: string
+          foto_urls: string[] | null
+          id: string
+          interview_data: Json | null
+          otp_verified_at: string | null
+          planimetria_url: string | null
+          status: string
+          updated_at: string
+          user_contact: Json | null
+        }
+        Insert: {
+          capitolato_data?: Json | null
+          cost_estimate_max?: number | null
+          cost_estimate_min?: number | null
+          created_at?: string
+          foto_urls?: string[] | null
+          id?: string
+          interview_data?: Json | null
+          otp_verified_at?: string | null
+          planimetria_url?: string | null
+          status?: string
+          updated_at?: string
+          user_contact?: Json | null
+        }
+        Update: {
+          capitolato_data?: Json | null
+          cost_estimate_max?: number | null
+          cost_estimate_min?: number | null
+          created_at?: string
+          foto_urls?: string[] | null
+          id?: string
+          interview_data?: Json | null
+          otp_verified_at?: string | null
+          planimetria_url?: string | null
+          status?: string
+          updated_at?: string
+          user_contact?: Json | null
+        }
+        Relationships: []
+      }
       pending_subscribers: {
         Row: {
           created_at: string

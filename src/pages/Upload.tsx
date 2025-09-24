@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Upload as UploadIcon, FileText, Image, X, CheckCircle } from "lucide-react";
+import { Upload as UploadIcon, FileText, Image, X, CheckCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 interface UploadedFile {
   file: File;
@@ -13,7 +15,9 @@ interface UploadedFile {
 
 const Upload = () => {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleFileUpload = (files: FileList | null, type: 'planimetria' | 'foto') => {
     if (!files) return;
@@ -64,6 +68,83 @@ const Upload = () => {
 
   const removeFile = (id: string) => {
     setUploadedFiles(prev => prev.filter(f => f.id !== id));
+  };
+
+  const uploadFileToSupabase = async (file: File, folder: string): Promise<string | null> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+    const filePath = `${folder}/${fileName}`;
+
+    const { error } = await supabase.storage
+      .from('leads-uploads')
+      .upload(filePath, file);
+
+    if (error) {
+      console.error('Upload error:', error);
+      return null;
+    }
+
+    return filePath;
+  };
+
+  const handleProceedWithAI = async () => {
+    if (!canProceed) return;
+    
+    setIsUploading(true);
+    
+    try {
+      // Upload planimetria
+      const planimetriaFile = planimetrie[0].file;
+      const planimetriaUrl = await uploadFileToSupabase(planimetriaFile, 'planimetrie');
+      
+      if (!planimetriaUrl) {
+        throw new Error('Errore nel caricamento della planimetria');
+      }
+
+      // Upload foto
+      const fotoUrls: string[] = [];
+      for (const fotoFile of foto) {
+        const fotoUrl = await uploadFileToSupabase(fotoFile.file, 'foto');
+        if (!fotoUrl) {
+          throw new Error(`Errore nel caricamento della foto ${fotoFile.file.name}`);
+        }
+        fotoUrls.push(fotoUrl);
+      }
+
+      // Create lead in database
+      const { data: lead, error } = await supabase
+        .from('leads')
+        .insert({
+          status: 'new',
+          planimetria_url: planimetriaUrl,
+          foto_urls: fotoUrls
+        })
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error('Errore nel salvataggio del progetto');
+      }
+
+      toast({
+        title: "File caricati con successo!",
+        description: "Procediamo con l'intervista AI per analizzare il tuo progetto"
+      });
+
+      // Navigate to interview page (will be created later)
+      // For now, just show success message
+      console.log('Lead created:', lead);
+      
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        variant: "destructive",
+        title: "Errore nel caricamento",
+        description: error instanceof Error ? error.message : "Riprova più tardi"
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const planimetrie = uploadedFiles.filter(f => f.type === 'planimetria');
@@ -210,13 +291,21 @@ const Upload = () => {
             <Button 
               variant="hero" 
               size="xl" 
-              disabled={!canProceed}
+              disabled={!canProceed || isUploading}
+              onClick={handleProceedWithAI}
               className="disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Continua con l'intervista AI
+              {isUploading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Caricamento in corso...
+                </>
+              ) : (
+                "Continua con l'intervista AI"
+              )}
             </Button>
             
-            {!canProceed && (
+            {!canProceed && !isUploading && (
               <p className="text-muted-foreground mt-4">
                 Carica almeno 1 planimetria e 4 foto per continuare
               </p>
