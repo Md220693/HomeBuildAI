@@ -131,9 +131,8 @@ const Upload = () => {
         description: "Procediamo con l'intervista AI per analizzare il tuo progetto"
       });
 
-      // Navigate to interview page (will be created later)
-      // For now, just show success message
-      console.log('Lead created:', lead);
+      // Navigate to interview page with leadId
+      navigate(`/interview?leadId=${lead.id}`);
       
     } catch (error) {
       console.error('Upload error:', error);

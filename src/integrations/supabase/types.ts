@@ -115,6 +115,7 @@ export type Database = {
           interview_data: Json | null
           otp_verified_at: string | null
           planimetria_url: string | null
+          scope_json: Json | null
           status: string
           updated_at: string
           user_contact: Json | null
@@ -129,6 +130,7 @@ export type Database = {
           interview_data?: Json | null
           otp_verified_at?: string | null
           planimetria_url?: string | null
+          scope_json?: Json | null
           status?: string
           updated_at?: string
           user_contact?: Json | null
@@ -143,6 +145,7 @@ export type Database = {
           interview_data?: Json | null
           otp_verified_at?: string | null
           planimetria_url?: string | null
+          scope_json?: Json | null
           status?: string
           updated_at?: string
           user_contact?: Json | null
