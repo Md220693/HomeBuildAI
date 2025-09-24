@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,17 +21,15 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const resendApiKey = Deno.env.get('RESEND_API_KEY');
 
-    if (!supabaseUrl || !supabaseServiceKey || !resendApiKey) {
+    if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error('Missing required environment variables');
     }
 
     // Initialize Supabase client with service role key
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const resend = new Resend(resendApiKey);
 
-    const { email, firstName, lastName }: AdminInviteRequest = await req.json();
+    const { email, firstName, lastName, password }: AdminInviteRequest & { password?: string } = await req.json();
 
     if (!email) {
       return new Response(
@@ -41,15 +38,15 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Generate temporary password
-    const tempPassword = `Admin${Math.random().toString(36).slice(-8)}!`;
+    // Use provided password or generate temporary one
+    const userPassword = password || '1Cavallo!';
 
     console.log('Creating admin user for:', email);
 
-    // Create admin user with temporary password
+    // Create admin user with password
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
-      password: tempPassword,
+      password: userPassword,
       email_confirm: true,
       user_metadata: {
         first_name: firstName || 'Admin',
@@ -100,52 +97,14 @@ const handler = async (req: Request): Promise<Response> => {
       console.error('Permission error:', permissionError);
     }
 
-    console.log('Sending welcome email to:', email);
-
-    // Send welcome email with credentials
-    const emailResponse = await resend.emails.send({
-      from: 'BuildHomeAI <onboarding@resend.dev>',
-      to: [email],
-      subject: 'Benvenuto nell\'area Admin - BuildHomeAI',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #333; text-align: center;">Benvenuto nell'area Admin</h1>
-          
-          <p>Ciao ${firstName || 'Admin'},</p>
-          
-          <p>Il tuo account amministratore per BuildHomeAI è stato creato con successo!</p>
-          
-          <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="margin-top: 0; color: #333;">Credenziali di accesso:</h3>
-            <p><strong>Email:</strong> ${email}</p>
-            <p><strong>Password temporanea:</strong> <code style="background-color: #e0e0e0; padding: 2px 4px; border-radius: 3px;">${tempPassword}</code></p>
-          </div>
-          
-          <p><strong>Importante:</strong> Ti consigliamo vivamente di cambiare la password dopo il primo accesso per motivi di sicurezza.</p>
-          
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="https://wncvvncldryfqqvpmnor.supabase.co/admin/auth" 
-               style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
-              Accedi all'Area Admin
-            </a>
-          </div>
-          
-          <p>Se hai problemi con l'accesso, contatta il supporto tecnico.</p>
-          
-          <p>Cordiali saluti,<br>
-          Il Team BuildHomeAI</p>
-        </div>
-      `,
-    });
-
-    console.log('Email sent successfully:', emailResponse);
+    console.log('Admin user created successfully');
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: 'Admin user created successfully',
         userId: authData.user.id,
-        tempPassword // In production, don't return the password
+        email: email
       }),
       {
         status: 200,
