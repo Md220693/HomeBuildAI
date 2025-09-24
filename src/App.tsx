@@ -12,6 +12,7 @@ import SupplierOnboarding from "./pages/SupplierOnboarding";
 import SupplierDashboard from "./pages/SupplierDashboard";
 import AdminConsole from "./pages/AdminConsole";
 import AdminAuth from "./pages/AdminAuth";
+import AITrainer from "./pages/AITrainer";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 
@@ -49,6 +50,7 @@ const App = () => (
               <AdminConsole />
             </ProtectedRoute>
           } />
+          <Route path="/admin/ai-trainer" element={<AITrainer />} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

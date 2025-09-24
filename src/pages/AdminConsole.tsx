@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings, Database, Users, Euro, FileText, Bell, Code } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Settings, Database, Users, Euro, FileText, Bell, Code, Brain } from "lucide-react";
 import Header from "@/components/Header";
 import AdminApiManager from "@/components/admin/AdminApiManager";
 import AdminModuleController from "@/components/admin/AdminModuleController";
@@ -13,6 +15,7 @@ import AdminNotifications from "@/components/admin/AdminNotifications";
 
 const AdminConsole = () => {
   const [activeTab, setActiveTab] = useState("overview");
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-background">
@@ -20,8 +23,20 @@ const AdminConsole = () => {
       
       <main className="container py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Pannello Amministratore</h1>
-          <p className="text-muted-foreground">Gestisci tutte le funzionalità dell'applicazione</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Pannello Amministratore</h1>
+              <p className="text-muted-foreground">Gestisci tutte le funzionalità dell'applicazione</p>
+            </div>
+            <Button 
+              onClick={() => navigate('/admin/ai-trainer')}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              size="lg"
+            >
+              <Brain className="w-5 h-5 mr-2" />
+              AI Trainer
+            </Button>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

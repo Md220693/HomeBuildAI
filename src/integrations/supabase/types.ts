@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_prompts: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          kind: string
+          version: number
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          kind: string
+          version?: number
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          kind?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      ai_settings: {
+        Row: {
+          default_confidence: number
+          guard_rail_pct: number
+          id: string
+          max_neighbors: number
+          updated_at: string
+          updated_by: string | null
+          use_rag: boolean
+          use_storici: boolean
+        }
+        Insert: {
+          default_confidence?: number
+          guard_rail_pct?: number
+          id?: string
+          max_neighbors?: number
+          updated_at?: string
+          updated_by?: string | null
+          use_rag?: boolean
+          use_storici?: boolean
+        }
+        Update: {
+          default_confidence?: number
+          guard_rail_pct?: number
+          id?: string
+          max_neighbors?: number
+          updated_at?: string
+          updated_by?: string | null
+          use_rag?: boolean
+          use_storici?: boolean
+        }
+        Relationships: []
+      }
       bulk_upload_jobs: {
         Row: {
           backup_created_at: string | null
@@ -99,6 +162,75 @@ export type Database = {
           sent_at?: string | null
           status?: string
           subject?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      interview_questions: {
+        Row: {
+          created_at: string
+          field_key: string
+          help_text: string | null
+          id: string
+          label: string
+          options_json: Json | null
+          required: boolean
+          sort_order: number
+          type: string
+          updated_at: string
+          visibility_rule: Json | null
+        }
+        Insert: {
+          created_at?: string
+          field_key: string
+          help_text?: string | null
+          id?: string
+          label: string
+          options_json?: Json | null
+          required?: boolean
+          sort_order?: number
+          type: string
+          updated_at?: string
+          visibility_rule?: Json | null
+        }
+        Update: {
+          created_at?: string
+          field_key?: string
+          help_text?: string | null
+          id?: string
+          label?: string
+          options_json?: Json | null
+          required?: boolean
+          sort_order?: number
+          type?: string
+          updated_at?: string
+          visibility_rule?: Json | null
+        }
+        Relationships: []
+      }
+      kb_docs: {
+        Row: {
+          content_text: string
+          created_at: string
+          id: string
+          tags: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content_text: string
+          created_at?: string
+          id?: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content_text?: string
+          created_at?: string
+          id?: string
+          tags?: string[] | null
           title?: string
           updated_at?: string
         }
@@ -212,6 +344,102 @@ export type Database = {
           processed_by?: string | null
           status?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      price_items: {
+        Row: {
+          base_price_eur: number
+          category: string
+          description: string | null
+          id: string
+          item_code: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          base_price_eur: number
+          category: string
+          description?: string | null
+          id?: string
+          item_code: string
+          unit: string
+          updated_at?: string
+        }
+        Update: {
+          base_price_eur?: number
+          category?: string
+          description?: string | null
+          id?: string
+          item_code?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      price_modifiers_geo: {
+        Row: {
+          cap_pattern: string | null
+          id: string
+          multiplier: number
+          note: string | null
+          province: string | null
+          region: string
+          updated_at: string
+        }
+        Insert: {
+          cap_pattern?: string | null
+          id?: string
+          multiplier?: number
+          note?: string | null
+          province?: string | null
+          region: string
+          updated_at?: string
+        }
+        Update: {
+          cap_pattern?: string | null
+          id?: string
+          multiplier?: number
+          note?: string | null
+          province?: string | null
+          region?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      price_modifiers_quality: {
+        Row: {
+          id: string
+          multiplier: number
+          quality_tier: string
+        }
+        Insert: {
+          id?: string
+          multiplier?: number
+          quality_tier: string
+        }
+        Update: {
+          id?: string
+          multiplier?: number
+          quality_tier?: string
+        }
+        Relationships: []
+      }
+      price_modifiers_urgency: {
+        Row: {
+          id: string
+          multiplier: number
+          urgency_band: string
+        }
+        Insert: {
+          id?: string
+          multiplier?: number
+          urgency_band: string
+        }
+        Update: {
+          id?: string
+          multiplier?: number
+          urgency_band?: string
         }
         Relationships: []
       }
@@ -674,6 +902,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      vendor_quotes: {
+        Row: {
+          created_at: string
+          geo: string
+          id: string
+          normalized_lines_json: Json | null
+          quality_tier: string
+          scope_json: Json
+          total_eur: number
+        }
+        Insert: {
+          created_at?: string
+          geo: string
+          id?: string
+          normalized_lines_json?: Json | null
+          quality_tier: string
+          scope_json: Json
+          total_eur: number
+        }
+        Update: {
+          created_at?: string
+          geo?: string
+          id?: string
+          normalized_lines_json?: Json | null
+          quality_tier?: string
+          scope_json?: Json
+          total_eur?: number
+        }
+        Relationships: []
       }
       whatsapp_campaigns: {
         Row: {
