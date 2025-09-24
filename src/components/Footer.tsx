@@ -37,6 +37,14 @@ const Footer = () => {
               <li>Contatti</li>
               <li>Privacy Policy</li>
               <li>Termini di Servizio</li>
+              <li>
+                <a 
+                  href="/admin/auth" 
+                  className="hover:text-primary-foreground transition-smooth"
+                >
+                  Admin Login
+                </a>
+              </li>
             </ul>
           </div>
         </div>

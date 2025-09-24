@@ -11,6 +11,7 @@ import SupplierAuth from "./pages/SupplierAuth";
 import SupplierOnboarding from "./pages/SupplierOnboarding";
 import SupplierDashboard from "./pages/SupplierDashboard";
 import AdminConsole from "./pages/AdminConsole";
+import AdminAuth from "./pages/AdminAuth";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 
@@ -42,6 +43,7 @@ const App = () => (
           } />
           
           {/* Admin Routes */}
+          <Route path="/admin/auth" element={<AdminAuth />} />
           <Route path="/admin" element={
             <ProtectedRoute>
               <AdminConsole />
