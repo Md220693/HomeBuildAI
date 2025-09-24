@@ -80,8 +80,8 @@ const Interview = () => {
         
         // Navigate to next step after 2 seconds
         setTimeout(() => {
-          // For now, just show success. Later this will navigate to capitolato generation
-          navigate('/');
+          // Navigate to capitolato generation page
+          navigate(`/capitolato?leadId=${leadId}`);
         }, 3000);
       }
 

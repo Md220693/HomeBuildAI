@@ -107,9 +107,11 @@ export type Database = {
       leads: {
         Row: {
           capitolato_data: Json | null
+          confidence: number | null
           cost_estimate_max: number | null
           cost_estimate_min: number | null
           created_at: string
+          disclaimer: string | null
           foto_urls: string[] | null
           id: string
           interview_data: Json | null
@@ -122,9 +124,11 @@ export type Database = {
         }
         Insert: {
           capitolato_data?: Json | null
+          confidence?: number | null
           cost_estimate_max?: number | null
           cost_estimate_min?: number | null
           created_at?: string
+          disclaimer?: string | null
           foto_urls?: string[] | null
           id?: string
           interview_data?: Json | null
@@ -137,9 +141,11 @@ export type Database = {
         }
         Update: {
           capitolato_data?: Json | null
+          confidence?: number | null
           cost_estimate_max?: number | null
           cost_estimate_min?: number | null
           created_at?: string
+          disclaimer?: string | null
           foto_urls?: string[] | null
           id?: string
           interview_data?: Json | null
