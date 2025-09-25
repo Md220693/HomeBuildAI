@@ -1,6 +1,5 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,10 +24,24 @@ serve(async (req) => {
       throw new Error('DEEPSEEK_API_KEY is not configured');
     }
 
-    // Initialize Supabase client to fetch system prompt
+    // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Get lead data to check for existing files
+    const { data: leadData, error: leadError } = await supabase
+      .from('leads')
+      .select('planimetria_url, foto_urls')
+      .eq('id', leadId)
+      .single();
+
+    if (leadError) {
+      console.error('Error fetching lead data:', leadError);
+      throw new Error('Failed to fetch lead data');
+    }
+
+    console.log('Lead file data:', leadData);
 
     // Get system interview prompt from database
     const { data: promptData, error: promptError } = await supabase
@@ -38,12 +51,30 @@ serve(async (req) => {
       .eq('is_active', true)
       .single();
 
+    // Build file context information
+    const hasFiles = leadData?.planimetria_url || (leadData?.foto_urls && leadData.foto_urls.length > 0);
+    const fileContext = hasFiles ? `
+IMPORTANTE: IL CLIENTE HA GIÀ CARICATO I FILE NECESSARI:
+- Planimetria: ${leadData?.planimetria_url ? 'SÌ' : 'NO'}
+- Foto: ${leadData?.foto_urls ? `SÌ (${leadData.foto_urls.length} foto)` : 'NO'}
+
+NON CHIEDERE AL CLIENTE DI CARICARE NUOVAMENTE I FILE. Procedi direttamente con le domande dell'intervista.
+` : `
+ATTENZIONE: IL CLIENTE NON HA ANCORA CARICATO I FILE NECESSARI:
+- Planimetria: necessaria
+- Foto: necessarie (almeno 4)
+
+Chiedi al cliente di caricare questi file prima di procedere con l'intervista.
+`;
+
     let systemPrompt;
     if (promptError || !promptData) {
       console.warn('No active system_interview prompt found, using fallback');
       // Fallback prompt if none found in database
       systemPrompt = `Sei un consulente AI specializzato in ristrutturazioni edilizie in Italia. 
 Il tuo ruolo è condurre un'intervista strutturata per raccogliere informazioni dettagliate sul progetto di ristrutturazione del cliente.
+
+${fileContext}
 
 REGOLE IMPORTANTI:
 1. Fai UNA DOMANDA ALLA VOLTA
@@ -68,7 +99,7 @@ Quando hai raccolto tutte le informazioni, rispondi con un JSON nel formato:
   }
 }`;
     } else {
-      systemPrompt = promptData.content;
+      systemPrompt = promptData.content + '\n\n' + fileContext;
     }
 
     // Prepare messages for DeepSeek API
