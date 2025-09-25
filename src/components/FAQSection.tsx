@@ -12,19 +12,19 @@ const FAQSection = () => {
       icon: Shield
     },
     {
+      question: "Posso usare HomeBuildAI senza planimetria o foto?",
+      answer: "No, HomeBuildAI funziona solo con planimetrie e foto dell'immobile. Questi documenti sono obbligatori perché permettono all'AI di analizzare accuratamente lo spazio e generare stime affidabili. Servono almeno 1 planimetria e 4-6 foto delle stanze.",
+      icon: HelpCircle
+    },
+    {
       question: "Quanto sono accurate le vostre stime?",
-      answer: "Le nostre stime sono basate su oltre 15.000 preventivi reali del mercato edilizio italiano. L'AI analizza migliaia di variabili per offrirti stime precise, tipicamente con uno scarto del 10-15% rispetto ai prezzi finali di mercato.",
+      answer: "Le nostre stime sono basate su migliaia di preventivi reali e algoritmi di AI avanzati. Offriamo una stima indicativa con un range di affidabilità, ma per un preventivo vincolante è sempre necessario un sopralluogo tecnico. HomeBuildAI è un intermediario tecnologico e non esegue i lavori.",
       icon: Calculator
     },
     {
       question: "Cosa succede dopo aver ricevuto la stima?",
       answer: "Ricevi via email un capitolato dettagliato e una stima dei costi. Puoi utilizzarla per confrontare altri preventivi o, se vuoi, possiamo metterti in contatto con imprese qualificate nella tua zona. Nessun impegno!",
       icon: Clock
-    },
-    {
-      question: "Devo caricare necessariamente planimetrie e foto?",
-      answer: "No! L'AI può lavorare anche con una semplice descrizione del tuo progetto. Ovviamente, più informazioni fornisci (planimetrie, foto, dettagli), più precisa sarà la stima.",
-      icon: HelpCircle
     },
     {
       question: "I miei dati sono al sicuro?",

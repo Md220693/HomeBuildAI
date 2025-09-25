@@ -161,9 +161,14 @@ const Upload = () => {
             <h1 className="text-4xl font-bold text-foreground mb-4">
               Carica planimetria e foto
             </h1>
-            <p className="text-xl text-muted-foreground">
-              Carica la planimetria e le foto di tutte le stanze. Servono per analizzare il tuo progetto e generare il capitolato personalizzato.
+            <p className="text-xl text-muted-foreground mb-4">
+              Carica la planimetria dell'immobile e foto di tutte le stanze: questi dati permettono all'AI di generare il capitolato personalizzato.
             </p>
+            <div className="bg-accent/10 border border-accent/20 rounded-lg p-4 text-sm text-foreground/80">
+              <p className="mb-2"><strong>Formati supportati:</strong> PDF, JPG, PNG. Devi caricare almeno 4–6 foto + planimetria obbligatoria.</p>
+              <p className="mb-2"><strong>Per migliori risultati:</strong> Foto con luce naturale, planimetria chiara, orientamento corretto aiuta la qualità della stima.</p>
+              <p><strong>Privacy:</strong> I dati che carichi restano privati e non saranno condivisi senza il tuo consenso.</p>
+            </div>
           </div>
 
           <div className="grid md:grid-cols-2 gap-8 mb-8">

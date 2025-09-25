@@ -5,8 +5,8 @@ const ProcessSteps = () => {
   const steps = [
     {
       icon: Upload,
-      title: "Carica i tuoi documenti",
-      description: "Planimetrie, foto o anche solo una descrizione del tuo progetto. L'AI sa lavorare con tutto!",
+      title: "Carica planimetria + foto",
+      description: "Carica la planimetria dell'immobile e almeno 4-6 foto di tutte le stanze (obbligatorio)",
       time: "2 min",
       color: "accent"
     },

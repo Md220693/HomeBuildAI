@@ -21,15 +21,15 @@ const HeroSection = () => {
           </div>
           
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-            Il tuo alleato AI per
+            Scopri quanto ti costa
             <span className="text-accent-light block bg-gradient-to-r from-accent-light to-accent bg-clip-text text-transparent">
-              ristrutturazioni smart
+              ristrutturare casa tua, ora
             </span>
           </h1>
           
           <p className="text-lg md:text-xl mb-4 text-primary-foreground/90 leading-relaxed max-w-3xl mx-auto">
-            <strong className="text-accent-light">Rapido, gratuito ed efficace.</strong> HomeBuildAI ti guida nella ristrutturazione 
-            con stime precise basate su AI e migliaia di preventivi reali. Scopri quanto costa in soli 5 minuti.
+            <strong className="text-accent-light">HomeBuildAI combina AI + dataset reali + competenza di settore</strong> per darti stime affidabili fin da subito. 
+            <strong className="text-accent-light">Rapido, gratuito ed efficace.</strong>
           </p>
           
           <div className="flex items-center justify-center gap-6 mb-8 text-sm text-primary-foreground/80">
@@ -55,7 +55,7 @@ const HeroSection = () => {
               onClick={() => navigate('/upload')}
             >
               <Home className="group-hover:rotate-12 transition-bounce w-5 h-5" />
-              Scopri quanto costa in 5 minuti
+              Ottieni la tua stima gratuita
             </Button>
             <Button 
               variant="outline" 
@@ -77,8 +77,8 @@ const HeroSection = () => {
                   </div>
                   <div className="absolute -top-2 -right-2 w-6 h-6 bg-accent text-white rounded-full flex items-center justify-center text-xs font-bold">1</div>
                 </div>
-                <h3 className="text-xl font-semibold mb-3">Carica documenti</h3>
-                <p className="text-primary-foreground/70 text-sm leading-relaxed">Planimetrie, foto o descrizione del tuo progetto</p>
+                <h3 className="text-xl font-semibold mb-3">Carica planimetria + foto</h3>
+                <p className="text-primary-foreground/70 text-sm leading-relaxed">Planimetria dell'immobile e foto di tutte le stanze</p>
                 <p className="text-accent-light text-xs mt-2 font-medium">⏱️ 2 minuti</p>
               </div>
               

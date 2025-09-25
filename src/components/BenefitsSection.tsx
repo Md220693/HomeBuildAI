@@ -3,34 +3,34 @@ import { Card } from "@/components/ui/card";
 
 const BenefitsSection = () => {
   const benefits = [
-    {
-      icon: Shield,
-      title: "Stime affidabili e precise",
-      description: "Algoritmi AI addestrati su oltre 15.000 preventivi reali del settore edilizio italiano",
-      number: "15.000+",
-      label: "preventivi analizzati"
-    },
-    {
-      icon: Clock,
-      title: "Decisioni immediate e informate", 
-      description: "Perfetto per valutare un acquisto: scopri subito se conviene ristrutturare quella casa",
-      number: "5 min",
-      label: "per avere chiarezza"
-    },
-    {
-      icon: Calculator,
-      title: "Confronta e risparmia",
-      description: "Verifica se i preventivi ricevuti sono in linea con i prezzi di mercato reali",
-      number: "100%",
-      label: "trasparenza sui costi"
-    },
-    {
-      icon: Users,
-      title: "Network di professionisti",
-      description: "Accesso diretto a imprese qualificate e verificate nella tua zona per realizzare i lavori",
-      number: "500+",
-      label: "partner qualificati"
-    }
+  {
+    icon: Clock,
+    title: "Da settimane a 5 minuti",
+    description: "Ottieni stima + capitolato + contatti fornitori in 5 minuti invece di settimane di ricerche e chiamate",
+    number: "5",
+    label: "minuti vs settimane"
+  },
+  {
+    icon: Calculator,
+    title: "Ristrutturazione trasparente", 
+    description: "Stima + capitolato + fornitori qualificati. Basato su migliaia di preventivi reali, niente sorprese",
+    number: "15.000+",
+    label: "preventivi analizzati"
+  },
+  {
+    icon: Users,
+    title: "Imprese partner verificate",
+    description: "Ricevi contatti solo da imprese qualificate della tua zona, già interessate al tuo progetto",
+    number: "500+",
+    label: "imprese partner"
+  },
+  {
+    icon: Shield,
+    title: "100% gratuito, nessun impegno",
+    description: "Stima gratuita, capitolato gratuito, contatti gratuiti. Decidi tu se e quando procedere",
+    number: "0€",
+    label: "sempre gratuito"
+  }
   ];
 
   return (
