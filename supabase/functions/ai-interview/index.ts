@@ -7,44 +7,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const systemPrompt = `Sei un consulente AI specializzato in ristrutturazioni edilizie in Italia. 
-
-Il tuo ruolo è condurre un'intervista strutturata per raccogliere informazioni dettagliate sul progetto di ristrutturazione del cliente.
-
-REGOLE IMPORTANTI:
-1. Fai UNA DOMANDA ALLA VOLTA
-2. Usa un linguaggio professionale ma comprensibile
-3. Spiega SEMPRE i termini tecnici se l'utente sembra non capire
-4. Sii pratico e diretto
-5. Adatta le domande in base alle risposte precedenti
-
-INFORMAZIONI DA RACCOGLIERE (in ordine):
-1. Tipologia immobile (casa, appartamento, ufficio, etc.)
-2. Superficie in mq
-3. Ambienti da ristrutturare (cucina, bagni, impianti elettrici/idraulici, pavimenti, pareti, etc.)
-4. Stato attuale dell'immobile e eventuali vincoli (edificio storico, condominio, etc.)
-5. Preferenze su materiali e stile (moderno, classico, eco-friendly, etc.)
-6. Urgenza dei lavori (tempistiche desiderate)
-7. Budget indicativo per i lavori
-
-Quando hai raccolto tutte le informazioni, rispondi con un JSON nel formato:
-{
-  "interview_complete": true,
-  "collected_data": {
-    "tipologia_immobile": "string",
-    "superficie_mq": "number",
-    "ambienti_ristrutturazione": ["array", "di", "ambienti"],
-    "stato_attuale": "string",
-    "vincoli": "string",
-    "preferenze_materiali": "string",
-    "stile_preferito": "string", 
-    "urgenza_lavori": "string",
-    "budget_indicativo": "string"
-  }
-}
-
-Se l'utente fa domande sui termini tecnici o vuole chiarimenti, rispondi sempre in modo educativo.`;
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -61,6 +23,52 @@ serve(async (req) => {
     const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
     if (!deepseekApiKey) {
       throw new Error('DEEPSEEK_API_KEY is not configured');
+    }
+
+    // Initialize Supabase client to fetch system prompt
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Get system interview prompt from database
+    const { data: promptData, error: promptError } = await supabase
+      .from('ai_prompts')
+      .select('content')
+      .eq('kind', 'system_interview')
+      .eq('is_active', true)
+      .single();
+
+    let systemPrompt;
+    if (promptError || !promptData) {
+      console.warn('No active system_interview prompt found, using fallback');
+      // Fallback prompt if none found in database
+      systemPrompt = `Sei un consulente AI specializzato in ristrutturazioni edilizie in Italia. 
+Il tuo ruolo è condurre un'intervista strutturata per raccogliere informazioni dettagliate sul progetto di ristrutturazione del cliente.
+
+REGOLE IMPORTANTI:
+1. Fai UNA DOMANDA ALLA VOLTA
+2. Usa un linguaggio professionale ma comprensibile
+3. Spiega SEMPRE i termini tecnici se l'utente sembra non capire
+4. Sii pratico e diretto
+5. Adatta le domande in base alle risposte precedenti
+
+Quando hai raccolto tutte le informazioni, rispondi con un JSON nel formato:
+{
+  "interview_complete": true,
+  "collected_data": {
+    "tipologia_immobile": "string",
+    "superficie_mq": "number",
+    "ambienti_ristrutturazione": ["array", "di", "ambienti"],
+    "stato_attuale": "string",
+    "vincoli": "string",
+    "preferenze_materiali": "string",
+    "stile_preferito": "string", 
+    "urgenza_lavori": "string",
+    "budget_indicativo": "string"
+  }
+}`;
+    } else {
+      systemPrompt = promptData.content;
     }
 
     // Prepare messages for DeepSeek API
@@ -105,19 +113,14 @@ serve(async (req) => {
         if (jsonMatch) {
           interviewData = JSON.parse(jsonMatch[0]);
           
-          // Initialize Supabase client
-          const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-          const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-          const supabase = createClient(supabaseUrl, supabaseKey);
-
-          // Update lead with scope data
-          const { error } = await supabase
-            .from('leads')
-            .update({ 
-              scope_json: interviewData.collected_data,
-              status: 'interview_completed'
-            })
-            .eq('id', leadId);
+           // Update lead with scope data
+           const { error } = await supabase
+             .from('leads')
+             .update({ 
+               scope_json: interviewData.collected_data,
+               status: 'interview_completed'
+             })
+             .eq('id', leadId);
 
           if (error) {
             console.error('Database update error:', error);
