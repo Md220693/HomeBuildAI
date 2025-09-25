@@ -40,12 +40,19 @@ interface PriceModifierUrgency {
   multiplier: number;
 }
 
+interface PricingPrompt {
+  id: string;
+  content: string;
+  is_active: boolean;
+}
+
 export const PriceCalibrationTab = () => {
   const { toast } = useToast();
   const [priceItems, setPriceItems] = useState<PriceItem[]>([]);
   const [geoModifiers, setGeoModifiers] = useState<PriceModifierGeo[]>([]);
   const [qualityModifiers, setQualityModifiers] = useState<PriceModifierQuality[]>([]);
   const [urgencyModifiers, setUrgencyModifiers] = useState<PriceModifierUrgency[]>([]);
+  const [pricingPrompt, setPricingPrompt] = useState<PricingPrompt | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [csvData, setCsvData] = useState('');
@@ -76,6 +83,40 @@ export const PriceCalibrationTab = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const savePricingPrompt = async (content: string) => {
+    try {
+      if (!pricingPrompt) {
+        toast({
+          title: 'Errore',
+          description: 'Prompt non trovato',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('ai_prompts')
+        .update({ content })
+        .eq('id', pricingPrompt.id);
+
+      if (error) throw error;
+
+      setPricingPrompt({ ...pricingPrompt, content });
+      
+      toast({
+        title: 'Successo',
+        description: 'Prompt salvato con successo',
+      });
+    } catch (error) {
+      console.error('Error saving prompt:', error);
+      toast({
+        title: 'Errore',
+        description: 'Errore durante il salvataggio',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -220,12 +261,62 @@ export const PriceCalibrationTab = () => {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="price-items" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="prompt">Prompt Sistema</TabsTrigger>
           <TabsTrigger value="price-items">Listino Prezzi</TabsTrigger>
           <TabsTrigger value="geo-modifiers">Mod. Geografici</TabsTrigger>
           <TabsTrigger value="quality-modifiers">Mod. Qualità</TabsTrigger>
           <TabsTrigger value="historical">Storico</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="prompt" className="space-y-4">
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Prompt Sistema Pricing</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Configura il prompt che guida l'AI nella generazione di capitolati e stime di costo.
+              </p>
+            </div>
+
+            {pricingPrompt ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Edit className="w-4 h-4" />
+                    Editor Prompt
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="prompt-content">Contenuto Prompt</Label>
+                    <Textarea
+                      id="prompt-content"
+                      value={pricingPrompt.content}
+                      onChange={(e) => setPricingPrompt({ ...pricingPrompt, content: e.target.value })}
+                      rows={20}
+                      className="font-mono text-sm"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={() => savePricingPrompt(pricingPrompt.content)}
+                      className="flex items-center gap-2"
+                    >
+                      <Save className="w-4 h-4" />
+                      Salva Prompt
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="p-6">
+                  <p className="text-muted-foreground">Prompt sistema non trovato.</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </TabsContent>
 
         <TabsContent value="price-items" className="space-y-4">
           <div className="flex justify-between items-center">

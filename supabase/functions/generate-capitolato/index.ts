@@ -7,8 +7,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Prompt will be retrieved from database
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -27,17 +25,6 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get lead data with scope
-    const { data: lead, error: leadError } = await supabase
-      .from('leads')
-      .select('scope_json')
-      .eq('id', leadId)
-      .single();
-
-    if (leadError || !lead?.scope_json) {
-      throw new Error('Lead data not found or incomplete');
-    }
-
     // Get capitolato prompt from database
     const { data: promptData, error: promptError } = await supabase
       .from('ai_prompts')
@@ -47,7 +34,18 @@ serve(async (req) => {
       .single();
 
     if (promptError || !promptData?.content) {
-      throw new Error('Capitolato prompt not found in database');
+      throw new Error('System prompt not found or inactive');
+    }
+
+    // Get lead data with scope
+    const { data: lead, error: leadError } = await supabase
+      .from('leads')
+      .select('scope_json')
+      .eq('id', leadId)
+      .single();
+
+    if (leadError || !lead?.scope_json) {
+      throw new Error('Lead data not found or incomplete');
     }
 
     const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
@@ -89,30 +87,29 @@ serve(async (req) => {
 
     console.log('DeepSeek response:', aiResponse);
 
-    // Parse response: extract user message and JSON data
-    let userMessage = '';
+    // Parse response - extract user message and JSON data
     let capitolatoData;
+    let userMessage = '';
     
     try {
-      // Check if response contains hidden JSON tag
-      const hiddenJsonMatch = aiResponse.match(/<!--CAPITOLATO_COMPLETE:\s*(\{[\s\S]*?\})\s*-->/);
-      
-      if (hiddenJsonMatch) {
-        // Extract user message (everything before the hidden tag)
-        userMessage = aiResponse.split('<!--CAPITOLATO_COMPLETE:')[0].trim();
-        // Parse the JSON from the hidden tag
-        capitolatoData = JSON.parse(hiddenJsonMatch[1]);
-      } else {
-        // Fallback: try to extract JSON as before (for backward compatibility)
+      // Look for the hidden JSON in the AI response
+      const hiddenJsonMatch = aiResponse.match(/<!--CAPITOLATO_COMPLETE:\s*({[\s\S]*?})\s*-->/);
+      if (!hiddenJsonMatch) {
+        // Fallback to old format for backward compatibility
         const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
           throw new Error('No JSON found in response');
         }
         capitolatoData = JSON.parse(jsonMatch[0]);
         userMessage = '✅ Capitolato generato con successo!';
+      } else {
+        // New format - extract both message and JSON
+        const beforeHidden = aiResponse.split('<!--CAPITOLATO_COMPLETE:')[0].trim();
+        userMessage = beforeHidden || '✅ Capitolato generato con successo!';
+        capitolatoData = JSON.parse(hiddenJsonMatch[1]);
       }
     } catch (parseError) {
-      console.error('JSON parsing error:', parseError, 'Response:', aiResponse);
+      console.error('JSON parsing error:', parseError);
       throw new Error('Failed to parse capitolato data');
     }
 
