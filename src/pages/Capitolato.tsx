@@ -210,9 +210,9 @@ const Capitolato = () => {
     }).format(amount);
   };
 
-  const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 0.8) return 'text-green-600 bg-green-100';
-    if (confidence >= 0.7) return 'text-blue-600 bg-blue-100';
+  const getAccuracyColor = (accuracy: number) => {
+    if (accuracy >= 0.8) return 'text-green-600 bg-green-100';
+    if (accuracy >= 0.7) return 'text-blue-600 bg-blue-100';
     return 'text-yellow-600 bg-yellow-100';
   };
 
@@ -276,42 +276,102 @@ const Capitolato = () => {
           <div className="max-w-4xl mx-auto">
             {/* Header */}
             <div className="text-center mb-8">
-              <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
+              <FileText className="h-16 w-16 text-primary mx-auto mb-4" />
               <h1 className="text-4xl font-bold text-foreground mb-4">
-                La tua stima è pronta
+                Il tuo capitolato è pronto!
               </h1>
               <p className="text-xl text-muted-foreground mb-6">
-                Inserisci i tuoi dati e verifica il numero di telefono. Riceverai il PDF con il capitolato e la stima di costi basata su dati reali e migliaia di preventivi analizzati.
+                Inserisci i tuoi dati per vedere la stima dettagliata e scaricare il capitolato completo con l'analisi tecnica personalizzata.
               </p>
-              
-              {/* Cost Preview */}
-              <Card className="p-6 mb-8 bg-gradient-accent">
-                <div className="grid md:grid-cols-2 gap-6 text-center">
-                  <div>
-                    <Euro className="h-8 w-8 mx-auto mb-2 text-accent-foreground" />
-                    <h3 className="text-lg font-semibold text-accent-foreground mb-1">Stima Costi</h3>
-                    <p className="text-2xl font-bold text-accent-foreground">
-                      {formatCurrency(leadData.cost_estimate_min)} - {formatCurrency(leadData.cost_estimate_max)}
-                    </p>
+            </div>
+
+            {/* Blurred Preview of Content */}
+            <div className="relative mb-8">
+              {/* Blurred Cost Estimate */}
+              <Card className="p-6 mb-6 bg-gradient-accent relative overflow-hidden">
+                <div className="absolute inset-0 bg-background/20 backdrop-blur-md z-10 flex items-center justify-center">
+                  <div className="text-center">
+                    <Euro className="h-12 w-12 mx-auto mb-3 text-primary" />
+                    <h3 className="text-lg font-bold text-foreground mb-2">Stima dei Costi Pronta</h3>
+                    <p className="text-sm text-muted-foreground">Inserisci i tuoi dati per visualizzare</p>
                   </div>
-                  <div>
-                    <TrendingUp className="h-8 w-8 mx-auto mb-2 text-accent-foreground" />
-                    <h3 className="text-lg font-semibold text-accent-foreground mb-1">Affidabilità</h3>
-                    <Badge className={`text-sm px-3 py-1 ${getConfidenceColor(leadData.confidence)}`}>
-                      {Math.round(leadData.confidence * 100)}% di confidenza
-                    </Badge>
+                </div>
+                <div className="filter blur-sm pointer-events-none select-none">
+                  <div className="grid md:grid-cols-3 gap-6 text-center">
+                    <div>
+                      <Euro className="h-8 w-8 mx-auto mb-2 text-accent-foreground" />
+                      <h3 className="text-lg font-semibold text-accent-foreground mb-1">Stima Costi</h3>
+                      <p className="text-2xl font-bold text-accent-foreground">
+                        € 85.000 - € 145.000
+                      </p>
+                    </div>
+                    <div>
+                      <TrendingUp className="h-8 w-8 mx-auto mb-2 text-accent-foreground" />
+                      <h3 className="text-lg font-semibold text-accent-foreground mb-1">Accuratezza</h3>
+                      <Badge className="text-sm px-3 py-1 text-blue-600 bg-blue-100">
+                        75% accuratezza
+                      </Badge>
+                    </div>
+                    <div>
+                      <Download className="h-8 w-8 mx-auto mb-2 text-accent-foreground" />
+                      <h3 className="text-lg font-semibold text-accent-foreground mb-1">Documento</h3>
+                      <Badge variant="secondary" className="mt-1">
+                        PDF Disponibile
+                      </Badge>
+                    </div>
                   </div>
                 </div>
               </Card>
+
+              {/* Blurred Capitolato Preview */}
+              <div className="grid gap-4 mb-6">
+                {Object.entries(sectionTitles).slice(0, 3).map(([key, title]) => (
+                  <Card key={key} className="p-4 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-background/20 backdrop-blur-md z-10 flex items-center justify-center">
+                      <div className="text-center">
+                        <FileText className="h-8 w-8 mx-auto mb-2 text-primary" />
+                        <p className="text-xs text-muted-foreground">Dettagli disponibili dopo verifica</p>
+                      </div>
+                    </div>
+                    <div className="filter blur-sm pointer-events-none select-none">
+                      <div className="flex items-center gap-3 mb-3">
+                        <FileText className="h-5 w-5 text-primary" />
+                        <h3 className="text-lg font-semibold">{title}</h3>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Descrizione dettagliata delle lavorazioni previste...
+                      </p>
+                      <div className="flex gap-2">
+                        <Badge variant="secondary">Materiali</Badge>
+                        <Badge variant="secondary">Lavorazioni</Badge>
+                        <Badge variant="secondary">Quantità</Badge>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+                <div className="text-center py-2">
+                  <p className="text-sm text-muted-foreground">
+                    + {Object.keys(sectionTitles).length - 3} altre sezioni dettagliate
+                  </p>
+                </div>
+              </div>
             </div>
 
-            {/* Contact Form for Validation */}
-            <div className="mb-8">
+            {/* Contact Form for Validation - More Prominent */}
+            <Card className="p-8 border-2 border-primary bg-gradient-to-br from-primary/5 to-accent/5">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold text-foreground mb-2">
+                  Sblocca la tua stima completa
+                </h2>
+                <p className="text-muted-foreground">
+                  Inserisci i tuoi dati e verifica il numero per accedere alla stima dettagliata e scaricare il PDF
+                </p>
+              </div>
               <ContactForm 
                 leadId={leadId!} 
                 onSuccess={handleContactSuccess}
               />
-            </div>
+            </Card>
           </div>
         </main>
       </div>
@@ -345,9 +405,9 @@ const Capitolato = () => {
                 </div>
                 <div>
                   <TrendingUp className="h-8 w-8 mx-auto mb-2 text-accent-foreground" />
-                  <h3 className="text-lg font-semibold text-accent-foreground mb-1">Affidabilità</h3>
-                  <Badge className={`text-sm px-3 py-1 ${getConfidenceColor(leadData.confidence)}`}>
-                    {Math.round(leadData.confidence * 100)}% di confidenza
+                  <h3 className="text-lg font-semibold text-accent-foreground mb-1">Accuratezza</h3>
+                  <Badge className={`text-sm px-3 py-1 ${getAccuracyColor(leadData.confidence)}`}>
+                    {Math.round(leadData.confidence * 100)}% accuratezza
                   </Badge>
                 </div>
                 <div>
