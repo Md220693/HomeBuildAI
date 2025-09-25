@@ -5,8 +5,8 @@ const ProcessSteps = () => {
   const steps = [
     {
       icon: Upload,
-      title: "Carica planimetria + foto",
-      description: "Carica la planimetria dell'immobile e almeno 4-6 foto di tutte le stanze (obbligatorio)",
+      title: "Carica foto e planimetria",
+      description: "Bastano delle foto fatte bene con il tuo smartphone e la planimetria dell'immobile!",
       time: "2 min",
       color: "accent"
     },
@@ -19,8 +19,8 @@ const ProcessSteps = () => {
     },
     {
       icon: FileText,
-      title: "I tuoi contatti",
-      description: "Solo nome ed email per ricevere il tuo capitolato personalizzato. Nessun impegno.",
+      title: "Condividi i tuoi riferimenti",
+      description: "Chiediamo i tuoi dati per personalizzare il preventivo ed offrirti dei fornitori certificati, ovunque tu sia!",
       time: "30 sec",
       color: "accent"
     },
@@ -38,11 +38,8 @@ const ProcessSteps = () => {
       <div className="container">
         <div className="text-center mb-20">
           <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
-            Come funziona HomeBuildAI
+            La tua bussola nell'ambito delle ristrutturazioni!
           </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            Un processo semplice che ti porta dalla confusione alla chiarezza in soli <strong className="text-accent">5 minuti</strong>
-          </p>
         </div>
         
         <div className="relative">

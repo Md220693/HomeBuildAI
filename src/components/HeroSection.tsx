@@ -17,35 +17,18 @@ const HeroSection = () => {
           {/* Trust badge */}
           <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 mb-6 text-sm font-medium">
             <CheckCircle className="w-4 h-4 text-accent-light" />
-            Basato su oltre 15.000 preventivi reali
+            L'AI al servizio della tua casa
           </div>
           
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-            Scopri quanto ti costa
             <span className="text-accent-light block bg-gradient-to-r from-accent-light to-accent bg-clip-text text-transparent">
-              ristrutturare casa tua, ora
+              Ristrutturare casa.. Quanto mi costi?
             </span>
           </h1>
           
-          <p className="text-lg md:text-xl mb-4 text-primary-foreground/90 leading-relaxed max-w-3xl mx-auto">
-            <strong className="text-accent-light">HomeBuildAI combina AI + dataset reali + competenza di settore</strong> per darti stime affidabili fin da subito. 
-            <strong className="text-accent-light">Rapido, gratuito ed efficace.</strong>
+          <p className="text-lg md:text-xl mb-8 text-primary-foreground/90 leading-relaxed max-w-4xl mx-auto">
+            Con <strong className="text-accent-light">HomeBuildAI</strong> utilizzi tutta la potenza AI per avere una valutazione immediata di quanto potrebbe costarti la ristrutturazione. <strong className="text-accent-light">Compri casa e sei fuorisede?</strong> HomeBuildAI è un alleato fedele! <strong className="text-accent-light">Vuoi ristrutturare casa tua ma non sai da dove cominciare?</strong> HomeBuildAI ti aiuta ad orientarti in maniera semplice, rapida, efficace e <strong className="text-accent-light">GRATUITA!</strong>
           </p>
-          
-          <div className="flex items-center justify-center gap-6 mb-8 text-sm text-primary-foreground/80">
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-accent-light" />
-              <span>5 minuti per la stima</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Target className="w-4 h-4 text-accent-light" />
-              <span>100% gratuito</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-accent-light" />
-              <span>Nessun impegno</span>
-            </div>
-          </div>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
             <Button 
@@ -77,8 +60,8 @@ const HeroSection = () => {
                   </div>
                   <div className="absolute -top-2 -right-2 w-6 h-6 bg-accent text-white rounded-full flex items-center justify-center text-xs font-bold">1</div>
                 </div>
-                <h3 className="text-xl font-semibold mb-3">Carica planimetria + foto</h3>
-                <p className="text-primary-foreground/70 text-sm leading-relaxed">Planimetria dell'immobile e foto di tutte le stanze</p>
+                <h3 className="text-xl font-semibold mb-3">Carica foto e planimetria</h3>
+                <p className="text-primary-foreground/70 text-sm leading-relaxed">Bastano delle foto fatte bene con il tuo smartphone e la planimetria dell'immobile!</p>
                 <p className="text-accent-light text-xs mt-2 font-medium">⏱️ 2 minuti</p>
               </div>
               
