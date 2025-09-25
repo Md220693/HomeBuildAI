@@ -105,22 +105,29 @@ Quando hai raccolto tutte le informazioni, rispondi con un JSON nel formato:
 
     console.log('DeepSeek response:', aiResponse);
 
-    // Check if interview is complete (AI returned JSON)
+    // Check if interview is complete (AI returned hidden JSON tag)
     let interviewData = null;
-    if (aiResponse.includes('"interview_complete": true')) {
+    let conversationalResponse = aiResponse;
+    
+    if (aiResponse.includes('<!--INTERVIEW_COMPLETE:')) {
       try {
-        const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+        // Extract the JSON from the hidden comment
+        const jsonMatch = aiResponse.match(/<!--INTERVIEW_COMPLETE:(.*?)-->/s);
         if (jsonMatch) {
-          interviewData = JSON.parse(jsonMatch[0]);
+          interviewData = JSON.parse(jsonMatch[1]);
           
-           // Update lead with scope data
-           const { error } = await supabase
-             .from('leads')
-             .update({ 
-               scope_json: interviewData.collected_data,
-               status: 'interview_completed'
-             })
-             .eq('id', leadId);
+          // Extract only the conversational part (everything before the hidden tag)
+          const conversationEnd = aiResponse.indexOf('<!--INTERVIEW_COMPLETE:');
+          conversationalResponse = aiResponse.substring(0, conversationEnd).trim();
+          
+          // Update lead with scope data
+          const { error } = await supabase
+            .from('leads')
+            .update({ 
+              scope_json: interviewData,
+              status: 'interview_completed'
+            })
+            .eq('id', leadId);
 
           if (error) {
             console.error('Database update error:', error);
@@ -136,9 +143,9 @@ Quando hai raccolto tutte le informazioni, rispondi con un JSON nel formato:
     }
 
     return new Response(JSON.stringify({ 
-      response: aiResponse,
+      response: conversationalResponse,
       interview_complete: !!interviewData,
-      collected_data: interviewData?.collected_data
+      collected_data: interviewData
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
