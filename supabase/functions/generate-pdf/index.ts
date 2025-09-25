@@ -1,6 +1,5 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -455,18 +454,20 @@ serve(async (req) => {
     // Generate HTML content
     const htmlContent = generatePDFHTML(lead);
     
-    // Convert HTML to PDF using a web service (placeholder - replace with actual PDF service)
-    // For now, we'll create a simple text-based PDF simulation
-    const pdfBuffer = new TextEncoder().encode(htmlContent);
+    // For now, we'll save HTML content as a .html file
+    // In the future, this should be replaced with actual PDF generation
+    const htmlBuffer = new TextEncoder().encode(htmlContent);
     
-    // Upload PDF to Supabase storage
-    const fileName = `capitolato-${leadId}-${Date.now()}.pdf`;
+    // Upload HTML file to Supabase storage
+    const fileName = `capitolato-${leadId}-${Date.now()}.html`;
     const filePath = `pdfs/${fileName}`;
+    
+    console.log('Uploading file:', filePath);
     
     const { error: uploadError } = await supabase.storage
       .from('leads-uploads')
-      .upload(filePath, pdfBuffer, {
-        contentType: 'application/pdf',
+      .upload(filePath, htmlBuffer, {
+        contentType: 'text/html',
         upsert: true
       });
 
