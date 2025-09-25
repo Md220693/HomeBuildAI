@@ -201,7 +201,11 @@ export const InterviewPromptTab = () => {
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <h4 className="font-medium">{prompt.kind}</h4>
+                          <h4 className="font-medium">
+                            {prompt.kind === 'system_interview' ? '🎯 Prompt Intervista' :
+                             prompt.kind === 'system_pricing' ? '💰 Prompt Capitolato' :
+                             prompt.kind}
+                          </h4>
                           <p className="text-sm text-muted-foreground">
                             Versione {prompt.version}
                           </p>

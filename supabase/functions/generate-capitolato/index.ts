@@ -7,97 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const capitolatoPrompt = `Sei un esperto consulente edile specializzato nella creazione di capitolati tecnici dettagliati per ristrutturazioni in Italia.
-
-Basandoti sui dati raccolti dall'intervista, genera un capitolato strutturato e una stima costi professionale.
-
-STRUTTURA CAPITOLATO RICHIESTA:
-1. DEMOLIZIONI E PREPARAZIONE
-2. IMPIANTI ELETTRICI
-3. IMPIANTI IDRAULICI/TERMICI  
-4. MURATURE E TRAMEZZI
-5. MASSETTI E SOTTOFONDI
-6. PAVIMENTI E RIVESTIMENTI
-7. SERRAMENTI E INFISSI
-8. PITTURAZIONI E FINITURE
-9. OPERE ACCESSORIE
-
-Per ogni sezione, includi:
-- Descrizione tecnica delle lavorazioni
-- Materiali specificati 
-- Unità di misura (mq, ml, n°, ecc.)
-- Quantità stimate
-
-STIMA COSTI:
-- Calcola un range realistico min-max in euro
-- Base prezzi di mercato Italia 2024
-- Considera: superficie, qualità materiali, complessità
-- Confidence level 0.6-0.85 basato su completezza dati
-
-Rispondi SOLO con questo JSON:
-{
-  "capitolato": {
-    "demolizioni": {
-      "descrizione": "string",
-      "lavorazioni": ["array di lavorazioni"],
-      "materiali": ["array materiali"], 
-      "quantita_stimate": "string"
-    },
-    "impianti_elettrici": {
-      "descrizione": "string",
-      "lavorazioni": ["array"],
-      "materiali": ["array"],
-      "quantita_stimate": "string"
-    },
-    "impianti_idraulici": {
-      "descrizione": "string", 
-      "lavorazioni": ["array"],
-      "materiali": ["array"],
-      "quantita_stimate": "string"
-    },
-    "murature": {
-      "descrizione": "string",
-      "lavorazioni": ["array"],
-      "materiali": ["array"], 
-      "quantita_stimate": "string"
-    },
-    "massetti": {
-      "descrizione": "string",
-      "lavorazioni": ["array"],
-      "materiali": ["array"],
-      "quantita_stimate": "string"
-    },
-    "pavimenti": {
-      "descrizione": "string",
-      "lavorazioni": ["array"],
-      "materiali": ["array"],
-      "quantita_stimate": "string"
-    },
-    "serramenti": {
-      "descrizione": "string", 
-      "lavorazioni": ["array"],
-      "materiali": ["array"],
-      "quantita_stimate": "string"
-    },
-    "pitturazioni": {
-      "descrizione": "string",
-      "lavorazioni": ["array"], 
-      "materiali": ["array"],
-      "quantita_stimate": "string"
-    },
-    "opere_accessorie": {
-      "descrizione": "string",
-      "lavorazioni": ["array"],
-      "materiali": ["array"],
-      "quantita_stimate": "string"
-    }
-  },
-  "stima_costi": {
-    "min_euro": number,
-    "max_euro": number,
-    "confidence": number
-  }
-}`;
+// Prompt will be retrieved from database
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -128,6 +38,18 @@ serve(async (req) => {
       throw new Error('Lead data not found or incomplete');
     }
 
+    // Get capitolato prompt from database
+    const { data: promptData, error: promptError } = await supabase
+      .from('ai_prompts')
+      .select('content')
+      .eq('kind', 'system_pricing')
+      .eq('is_active', true)
+      .single();
+
+    if (promptError || !promptData?.content) {
+      throw new Error('Capitolato prompt not found in database');
+    }
+
     const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
     if (!deepseekApiKey) {
       throw new Error('DEEPSEEK_API_KEY is not configured');
@@ -135,7 +57,7 @@ serve(async (req) => {
 
     // Prepare prompt with lead data
     const scopeData = JSON.stringify(lead.scope_json, null, 2);
-    const fullPrompt = `${capitolatoPrompt}\n\nDATI PROGETTO:\n${scopeData}`;
+    const fullPrompt = `${promptData.content}\n\nDATI PROGETTO:\n${scopeData}`;
 
     console.log('Generating capitolato for lead:', leadId);
 
@@ -167,16 +89,30 @@ serve(async (req) => {
 
     console.log('DeepSeek response:', aiResponse);
 
-    // Parse JSON response
+    // Parse response: extract user message and JSON data
+    let userMessage = '';
     let capitolatoData;
+    
     try {
-      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('No JSON found in response');
+      // Check if response contains hidden JSON tag
+      const hiddenJsonMatch = aiResponse.match(/<!--CAPITOLATO_COMPLETE:\s*(\{[\s\S]*?\})\s*-->/);
+      
+      if (hiddenJsonMatch) {
+        // Extract user message (everything before the hidden tag)
+        userMessage = aiResponse.split('<!--CAPITOLATO_COMPLETE:')[0].trim();
+        // Parse the JSON from the hidden tag
+        capitolatoData = JSON.parse(hiddenJsonMatch[1]);
+      } else {
+        // Fallback: try to extract JSON as before (for backward compatibility)
+        const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          throw new Error('No JSON found in response');
+        }
+        capitolatoData = JSON.parse(jsonMatch[0]);
+        userMessage = '✅ Capitolato generato con successo!';
       }
-      capitolatoData = JSON.parse(jsonMatch[0]);
     } catch (parseError) {
-      console.error('JSON parsing error:', parseError);
+      console.error('JSON parsing error:', parseError, 'Response:', aiResponse);
       throw new Error('Failed to parse capitolato data');
     }
 
@@ -208,6 +144,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
+      message: userMessage,
       capitolato: capitolatoData.capitolato,
       stima_costi: capitolatoData.stima_costi
     }), {
