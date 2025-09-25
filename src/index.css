@@ -2,37 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
-/* BuildHomeAI Design System - Professional construction & renovation branding */
+/* HomeBuildAI Design System - Smart AI-powered construction platform */
 
 @layer base {
   :root {
     /* Core brand palette */
     --background: 0 0% 100%;
-    --foreground: 215 25% 15%;
+    --foreground: 210 20% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 215 25% 15%;
+    --card-foreground: 210 20% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 15%;
+    --popover-foreground: 210 20% 15%;
 
-    /* Professional blue primary */
-    --primary: 215 85% 25%;
+    /* HomeBuildAI blue primary - from logo */
+    --primary: 205 85% 35%;
     --primary-foreground: 0 0% 98%;
-    --primary-light: 215 75% 35%;
-    --primary-dark: 215 90% 15%;
+    --primary-light: 205 75% 45%;
+    --primary-dark: 205 95% 25%;
 
-    /* Light secondary for backgrounds */
-    --secondary: 215 25% 95%;
-    --secondary-foreground: 215 25% 15%;
+    /* Soft secondary for balance */
+    --secondary: 210 15% 96%;
+    --secondary-foreground: 210 20% 20%;
 
-    --muted: 215 15% 92%;
-    --muted-foreground: 215 15% 45%;
+    --muted: 210 10% 94%;
+    --muted-foreground: 210 15% 50%;
 
-    /* Orange accent for CTAs */
-    --accent: 25 95% 55%;
+    /* HomeBuildAI green accent - from logo AI */
+    --accent: 145 65% 45%;
     --accent-foreground: 0 0% 98%;
-    --accent-light: 25 90% 65%;
+    --accent-light: 145 60% 55%;
 
     --destructive: 0 75% 55%;
     --destructive-foreground: 0 0% 98%;

@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import buildhomeaiLogo from "@/assets/buildhomeai-logo.png";
+import homeBuildAILogo from "@/assets/homebuildai-logo.png";
 import { useNavigate } from "react-router-dom";
 
 const Header = () => {
@@ -7,29 +7,29 @@ const Header = () => {
 
   return (
     <header className="bg-background/95 backdrop-blur-sm border-b border-border sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-        <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate('/')}>
+      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center space-x-3 cursor-pointer group" onClick={() => navigate('/')}>
           <img 
-            src={buildhomeaiLogo} 
-            alt="BuildHomeAI Logo" 
-            className="h-10 w-10 object-contain"
+            src={homeBuildAILogo} 
+            alt="HomeBuildAI - Il tuo alleato AI per ristrutturazioni" 
+            className="h-12 w-auto object-contain transition-smooth group-hover:scale-105"
           />
-          <h1 className="text-2xl font-bold text-primary">BuildHomeAI</h1>
         </div>
         
-        <nav className="hidden md:flex items-center space-x-6">
-          <a href="#come-funziona" className="text-foreground hover:text-primary transition-smooth">
+        <nav className="hidden md:flex items-center space-x-8">
+          <a href="#come-funziona" className="text-foreground/80 hover:text-primary transition-smooth font-medium">
             Come funziona
           </a>
-          <a href="#vantaggi" className="text-foreground hover:text-primary transition-smooth">
-            Vantaggi
+          <a href="#vantaggi" className="text-foreground/80 hover:text-primary transition-smooth font-medium">
+            Perché sceglierci
           </a>
           <Button 
-            variant="professional" 
+            variant="hero" 
             size="sm"
             onClick={() => navigate('/upload')}
+            className="shadow-lg hover:shadow-xl"
           >
-            Calcola subito
+            Inizia gratis
           </Button>
         </nav>
       </div>
