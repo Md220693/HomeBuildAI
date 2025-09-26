@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Upload, Save, Trash2, Edit } from 'lucide-react';
+import { RegionalPricelistsTab } from './RegionalPricelistsTab';
 
 interface PriceItem {
   id: string;
@@ -261,9 +262,10 @@ export const PriceCalibrationTab = () => {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="price-items" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="prompt">Prompt Sistema</TabsTrigger>
           <TabsTrigger value="price-items">Listino Prezzi</TabsTrigger>
+          <TabsTrigger value="regional-pricelists">Prezziari Regionali</TabsTrigger>
           <TabsTrigger value="geo-modifiers">Mod. Geografici</TabsTrigger>
           <TabsTrigger value="quality-modifiers">Mod. Qualità</TabsTrigger>
           <TabsTrigger value="historical">Storico</TabsTrigger>
@@ -486,6 +488,10 @@ VERNC_002,Verniciature,mq,12.00,Verniciatura pareti interne`}
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="regional-pricelists" className="space-y-4">
+          <RegionalPricelistsTab />
         </TabsContent>
 
         <TabsContent value="geo-modifiers" className="space-y-4">

@@ -39,10 +39,52 @@ const handler = async (req: Request): Promise<Response> => {
       .select('*')
       .single();
 
-    // Get base price items
-    const { data: priceItems } = await supabase
-      .from('price_items')
-      .select('*');
+    // Extract region from geo string for regional pricing
+    const regionMatch = geo.toLowerCase();
+    
+    // Get price items using intelligent regional selection
+    let priceItems: any[] = [];
+    
+    // First try to get regional price items
+    if (regionMatch) {
+      const { data: regionalItems } = await supabase
+        .from('price_items')
+        .select(`
+          *,
+          regional_pricelists!inner (
+            nome_regione,
+            attivo,
+            anno_riferimento
+          )
+        `)
+        .ilike('regional_pricelists.nome_regione', `%${regionMatch}%`)
+        .eq('regional_pricelists.attivo', true)
+        .order('priority', { ascending: false })
+        .order('regional_pricelists.anno_riferimento', { ascending: false });
+
+      priceItems = regionalItems || [];
+    }
+    
+    // Fallback to national items (no regional pricelist) if no regional found
+    if (priceItems.length === 0) {
+      const { data: nationalItems } = await supabase
+        .from('price_items')
+        .select('*')
+        .is('regional_pricelist_id', null)
+        .order('priority', { ascending: false });
+        
+      priceItems = nationalItems || [];
+    }
+    
+    // Final fallback - get all items
+    if (priceItems.length === 0) {
+      const { data: allItems } = await supabase
+        .from('price_items')
+        .select('*')
+        .order('priority', { ascending: false });
+        
+      priceItems = allItems || [];
+    }
 
     // Get modifiers
     const [geoModifiers, qualityModifiers, urgencyModifiers] = await Promise.all([

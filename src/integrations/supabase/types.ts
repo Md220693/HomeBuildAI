@@ -354,6 +354,8 @@ export type Database = {
           description: string | null
           id: string
           item_code: string
+          priority: number | null
+          regional_pricelist_id: string | null
           unit: string
           updated_at: string
         }
@@ -363,6 +365,8 @@ export type Database = {
           description?: string | null
           id?: string
           item_code: string
+          priority?: number | null
+          regional_pricelist_id?: string | null
           unit: string
           updated_at?: string
         }
@@ -372,10 +376,20 @@ export type Database = {
           description?: string | null
           id?: string
           item_code?: string
+          priority?: number | null
+          regional_pricelist_id?: string | null
           unit?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "price_items_regional_pricelist_id_fkey"
+            columns: ["regional_pricelist_id"]
+            isOneToOne: false
+            referencedRelation: "regional_pricelists"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       price_modifiers_geo: {
         Row: {
@@ -535,6 +549,56 @@ export type Database = {
           whatsapp_consent?: boolean
         }
         Relationships: []
+      }
+      regional_pricelists: {
+        Row: {
+          anno_riferimento: number
+          attivo: boolean
+          created_at: string
+          created_by: string | null
+          file_originale_name: string | null
+          file_originale_url: string | null
+          fonte: string
+          id: string
+          nome_regione: string
+          note: string | null
+          updated_at: string
+        }
+        Insert: {
+          anno_riferimento?: number
+          attivo?: boolean
+          created_at?: string
+          created_by?: string | null
+          file_originale_name?: string | null
+          file_originale_url?: string | null
+          fonte: string
+          id?: string
+          nome_regione: string
+          note?: string | null
+          updated_at?: string
+        }
+        Update: {
+          anno_riferimento?: number
+          attivo?: boolean
+          created_at?: string
+          created_by?: string | null
+          file_originale_name?: string | null
+          file_originale_url?: string | null
+          fonte?: string
+          id?: string
+          nome_regione?: string
+          note?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "regional_pricelists_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscribers: {
         Row: {
@@ -997,6 +1061,19 @@ export type Database = {
       extract_cap_from_location: {
         Args: { interview_data: Json }
         Returns: string
+      }
+      get_best_price_item: {
+        Args: { p_item_code: string; p_region?: string }
+        Returns: {
+          base_price_eur: number
+          category: string
+          description: string
+          id: string
+          item_code: string
+          priority: number
+          regional_pricelist_id: string
+          unit: string
+        }[]
       }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
