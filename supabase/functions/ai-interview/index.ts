@@ -78,28 +78,35 @@ ${fileContext}
 
 REGOLE IMPORTANTI:
 1. Fai UNA DOMANDA ALLA VOLTA
-2. Usa un linguaggio professionale ma comprensibile
-3. Spiega SEMPRE i termini tecnici se l'utente sembra non capire
-4. Sii pratico e diretto
-5. Adatta le domande in base alle risposte precedenti
+2. Sii conversazionale e amichevole
+3. Spiega i termini tecnici quando necessario
+4. Adatta le domande in base alle risposte precedenti
 
-Quando hai raccolto tutte le informazioni, rispondi con un JSON nel formato:
-{
-  "interview_complete": true,
-  "collected_data": {
-    "tipologia_immobile": "string",
-    "superficie_mq": "number",
-    "ambienti_ristrutturazione": ["array", "di", "ambienti"],
-    "stato_attuale": "string",
-    "vincoli": "string",
-    "preferenze_materiali": "string",
-    "stile_preferito": "string", 
-    "urgenza_lavori": "string",
-    "budget_indicativo": "string"
-  }
-}`;
+ORDINE DOMANDE OBBLIGATORIO:
+1. PRIMA DOMANDA ASSOLUTA: "Dove si trova l'immobile da ristrutturare? (Città, zona/quartiere e CAP se lo conosci)"
+2. Solo dopo aver ottenuto la localizzazione, procedi con le altre domande su: tipo immobile, metrature, stato attuale, budget orientativo, tempistiche, finiture desiderate, impianti
+
+IMPORTANTE: NON SALTARE MAI la domanda sulla localizzazione. È FONDAMENTALE per calcoli accurati.
+
+QUANDO HAI RACCOLTO TUTTE LE INFORMAZIONI ESSENZIALI, includi questa dicitura esatta alla fine della tua risposta:
+<!--INTERVIEW_COMPLETE:{
+  "localizzazione": "Città, zona, CAP",
+  "tipo_immobile": "appartamento/casa/ufficio/etc",
+  "metratura": "XX mq",
+  "budget_orientativo": "XX-XX euro",
+  "tempistiche": "X mesi",
+  "scope_ristrutturazione": "completa/parziale/solo_estetica",
+  "priorita_principali": ["cucina", "bagni", "impianti", "etc"]
+}-->`;
     } else {
-      systemPrompt = promptData.content + '\n\n' + fileContext;
+      systemPrompt = `${promptData.content}
+
+${fileContext}
+
+IMPORTANTE: La PRIMA domanda dopo aver verificato i file deve SEMPRE essere sulla localizzazione:
+"Dove si trova l'immobile da ristrutturare? (Città, zona/quartiere e CAP se lo conosci)"
+
+Non procedere con altre domande finché non hai ottenuto la localizzazione.`;
     }
 
     // Prepare messages for DeepSeek API

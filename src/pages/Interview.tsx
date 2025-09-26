@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,7 @@ const Interview = () => {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const id = searchParams.get('leadId');
@@ -43,6 +44,11 @@ const Interview = () => {
       content: 'Ciao! Sono il consulente AI di BuildHomeAI. Ti farò alcune domande per capire meglio il tuo progetto di ristrutturazione e fornirti un capitolato personalizzato basato su dati reali del settore edilizio. Iniziamo: che tipo di immobile devi ristrutturare?'
     }]);
   }, [searchParams, toast, navigate]);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isLoading]);
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading || !leadId) return;
@@ -127,7 +133,7 @@ const Interview = () => {
             </div>
             
             {/* Messages */}
-            <div className="space-y-4 mb-6 min-h-[400px] max-h-[500px] overflow-y-auto">
+            <div className="space-y-4 mb-6 min-h-[400px] max-h-[500px] overflow-y-auto" id="messages-container">
               {messages.map((message, index) => (
                 <div
                   key={index}
@@ -155,6 +161,9 @@ const Interview = () => {
                   </div>
                 </div>
               )}
+              
+              {/* Invisible element for scrolling to */}
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Input */}
