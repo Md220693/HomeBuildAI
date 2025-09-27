@@ -19,6 +19,8 @@ const Interview = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [leadId, setLeadId] = useState<string | null>(null);
+  const [responseTimeout, setResponseTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [showForceComplete, setShowForceComplete] = useState(false);
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -50,6 +52,15 @@ const Interview = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (responseTimeout) {
+        clearTimeout(responseTimeout);
+      }
+    };
+  }, [responseTimeout]);
+
   const sendMessage = async () => {
     if (!input.trim() || isLoading || !leadId) return;
 
@@ -58,6 +69,20 @@ const Interview = () => {
     setMessages(newMessages);
     setInput("");
     setIsLoading(true);
+    setShowForceComplete(false);
+
+    // Set timeout for responses longer than 30 seconds
+    const timeoutId = setTimeout(() => {
+      console.warn('🚨 Response timeout reached');
+      setShowForceComplete(true);
+      toast({
+        variant: "destructive",
+        title: "Risposta lenta",
+        description: "La risposta sta impiegando più tempo del previsto. Puoi forzare il completamento se necessario.",
+      });
+    }, 30000);
+    
+    setResponseTimeout(timeoutId);
 
     try {
       const { data, error } = await supabase.functions.invoke('ai-interview', {
@@ -71,6 +96,34 @@ const Interview = () => {
 
       if (data.error) {
         throw new Error(data.error);
+      }
+
+      // Clear timeout since we got a response
+      if (responseTimeout) {
+        clearTimeout(responseTimeout);
+        setResponseTimeout(null);
+      }
+
+      // FRONTEND SAFETY CHECK: Detect inappropriate content
+      const forbiddenKeywords = ['capitolato preliminare', 'stima di costo', '€', 'euro', 'prezzo', 'Range stimato'];
+      const responseContent = data.response?.toLowerCase() || '';
+      const containsForbidden = forbiddenKeywords.some(keyword => 
+        responseContent.includes(keyword.toLowerCase())
+      );
+
+      if (containsForbidden) {
+        console.warn('🚨 FRONTEND SAFETY: Detected inappropriate AI response');
+        
+        // Show warning and force completion
+        toast({
+          variant: "destructive",
+          title: "Risposta inappropriata rilevata",
+          description: "L'AI ha generato contenuto non appropriato. Forziamo il completamento dell'intervista.",
+        });
+        
+        // Force completion
+        await forceCompleteInterview();
+        return;
       }
 
       const aiMessage: Message = { role: 'assistant', content: data.response };
@@ -93,13 +146,64 @@ const Interview = () => {
 
     } catch (error) {
       console.error('Error sending message:', error);
+      
+      // Clear timeout on error
+      if (responseTimeout) {
+        clearTimeout(responseTimeout);
+        setResponseTimeout(null);
+      }
+      
       toast({
         variant: "destructive",
         title: "Errore di comunicazione",
         description: "Si è verificato un errore. Riprova."
       });
+      
+      // After multiple errors, show force complete option
+      if (messages.length > 8) { // If there are many messages already
+        setShowForceComplete(true);
+      }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const forceCompleteInterview = async () => {
+    if (!leadId) return;
+    
+    try {
+      // Force update the lead to completed status
+      const { error } = await supabase
+        .from('leads')
+        .update({ 
+          status: 'interview_completed',
+          scope_json: {
+            status: 'force_completed',
+            timestamp: new Date().toISOString(),
+            reason: 'user_forced_or_safety_trigger'
+          }
+        })
+        .eq('id', leadId);
+
+      if (error) throw error;
+
+      setIsComplete(true);
+      toast({
+        title: "Intervista forzatamente completata",
+        description: "Procediamo con le informazioni raccolte finora.",
+      });
+      
+      setTimeout(() => {
+        navigate(`/capitolato?leadId=${leadId}`);
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Error forcing completion:', error);
+      toast({
+        variant: "destructive",
+        title: "Errore nel completamento forzato",
+        description: "Riprova o contatta il supporto."
+      });
     }
   };
 
@@ -168,22 +272,41 @@ const Interview = () => {
 
             {/* Input */}
             {!isComplete && (
-              <div className="flex gap-2">
-                <Input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Scrivi la tua risposta..."
-                  onKeyPress={handleKeyPress}
-                  disabled={isLoading}
-                  className="flex-1"
-                />
-                <Button
-                  onClick={sendMessage}
-                  disabled={!input.trim() || isLoading}
-                  variant="hero"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="Scrivi la tua risposta..."
+                    onKeyPress={handleKeyPress}
+                    disabled={isLoading}
+                    className="flex-1"
+                  />
+                  <Button
+                    onClick={sendMessage}
+                    disabled={!input.trim() || isLoading}
+                    variant="hero"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                {/* Force Complete Button (Emergency) */}
+                {showForceComplete && (
+                  <div className="text-center p-3 bg-orange-50 rounded-lg border border-orange-200">
+                    <p className="text-orange-800 text-sm mb-2">
+                      🚨 Sembra che ci siano dei problemi con l'intervista.
+                    </p>
+                    <Button
+                      onClick={forceCompleteInterview}
+                      variant="outline"
+                      size="sm"
+                      className="border-orange-300 text-orange-700 hover:bg-orange-100"
+                    >
+                      Completa Comunque l'Intervista
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
 

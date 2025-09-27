@@ -70,33 +70,37 @@ Chiedi al cliente di caricare questi file prima di procedere con l'intervista.
     let systemPrompt;
     if (promptError || !promptData) {
       console.warn('No active system_interview prompt found, using fallback');
-      // Fallback prompt if none found in database
-      systemPrompt = `Sei un consulente AI che conduce SOLO INTERVISTE per raccogliere dati su ristrutturazioni. 
+      // Ultra-rigid fallback prompt
+      systemPrompt = `Tu sei ESCLUSIVAMENTE un RACCOGLITORE DI INFORMAZIONI per progetti di ristrutturazione. NIENT'ALTRO.
 
 ${fileContext}
 
-RUOLO: SOLO INTERVISTATORE - NON generare stime, capitolati o prezzi.
+🚫 VIETATO ASSOLUTO:
+- NON scrivere capitolati, preventivi, stime di costo
+- NON dare consigli tecnici o raccomandazioni
+- NON usare parole: "capitolato", "stima", "costo", "prezzo", "€", "euro", "preventivo"
+- NON superare 50 parole per risposta
+- NON generare contenuti oltre la semplice domanda
 
-REGOLE FERME:
-1. Fai UNA DOMANDA ALLA VOLTA
-2. Sii breve e diretto (massimo 3-4 righe per risposta)
-3. NON fornire mai stime di costo o consigli tecnici
-4. SOLO raccogliere informazioni
+✅ PUOI SOLO:
+- Fare UNA domanda breve alla volta (max 25 parole)
+- Raccogliere le risposte dell'utente
+- Passare alla domanda successiva
 
-DOMANDE IN ORDINE:
-1. OBBLIGATORIO: Localizzazione completa (via, città, CAP)
-2. Tipo immobile e superficie
-3. Piano, ascensore, anno costruzione  
-4. Stato attuale impianti
-5. Ambiti ristrutturazione
-6. Budget orientativo
-7. Tempistiche
+SEQUENZA RIGIDA:
+1. "Dove si trova l'immobile? (via, città, CAP)"
+2. "Che tipo di immobile e quanti mq?"
+3. "Piano, ascensore, anno costruzione?"
+4. "Stato impianti attuali?"
+5. "Quali lavori vuoi fare?"
+6. "Budget orientativo?"
+7. "Quando vuoi iniziare?"
 
-COMPLETAMENTO: Quando hai tutti i dati essenziali, scrivi SOLO:
-"Perfetto! Ho raccolto tutte le informazioni necessarie. Procedo ora a generare il tuo capitolato personalizzato."
+FINE INTERVISTA: Quando hai TUTTE le risposte, scrivi ESATTAMENTE:
+"Perfetto! Procedo con il capitolato."
 
-POI aggiungi il tag nascosto:
-<!--INTERVIEW_COMPLETE:{dati raccolti}-->`;
+POI aggiungi SOLO il tag:
+<!--INTERVIEW_COMPLETE:{"dati":"raccolti"}-->`;
     } else {
       systemPrompt = `${promptData.content}
 
@@ -116,7 +120,7 @@ Non procedere con altre domande finché non hai ottenuto la localizzazione.`;
 
     console.log('Calling DeepSeek API with messages:', apiMessages);
 
-    // Call DeepSeek API
+    // Call DeepSeek API with stricter constraints
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -126,8 +130,9 @@ Non procedere con altre domande finché non hai ottenuto la localizzazione.`;
       body: JSON.stringify({
         model: 'deepseek-chat',
         messages: apiMessages,
-        max_tokens: 1000,
-        temperature: 0.7,
+        max_tokens: 150, // Drastically reduced to force short responses
+        temperature: 0.3, // Lower temperature for more predictable responses
+        stop: ['<!--', 'CAPITOLATO', 'STIMA', 'COSTO', '€'], // Stop tokens
       }),
     });
 
@@ -138,24 +143,90 @@ Non procedere con altre domande finché non hai ottenuto la localizzazione.`;
     }
 
     const data = await response.json();
-    const aiResponse = data.choices[0].message.content;
+    let aiResponse = data.choices[0].message.content;
 
-    console.log('DeepSeek response:', aiResponse);
+    console.log('Raw DeepSeek response:', aiResponse);
+    
+    // SAFETY CHECK: Detect inappropriate content and truncate
+    const forbiddenKeywords = ['capitolato', 'stima', 'costo', 'prezzo', '€', 'euro', 'preventivo', 'CAPITOLATO', 'STIMA'];
+    const containsForbidden = forbiddenKeywords.some(keyword => aiResponse.toLowerCase().includes(keyword.toLowerCase()));
+    
+    if (containsForbidden) {
+      console.warn('🚨 SAFETY ALERT: AI generated inappropriate content:', aiResponse.substring(0, 200));
+      
+      // Force truncate at first forbidden word
+      const firstForbidden = forbiddenKeywords.find(keyword => aiResponse.toLowerCase().includes(keyword.toLowerCase()));
+      if (firstForbidden) {
+        const cutIndex = aiResponse.toLowerCase().indexOf(firstForbidden.toLowerCase());
+        aiResponse = aiResponse.substring(0, cutIndex).trim();
+        
+        // Add completion if response is now too short
+        if (aiResponse.length < 20) {
+          aiResponse = "Perfetto! Procedo con il capitolato.";
+          aiResponse += '\n<!--INTERVIEW_COMPLETE:{"status":"force_completed","reason":"inappropriate_content"}-->';
+        }
+      }
+    }
+    
+    // Additional safety: Truncate responses longer than 300 characters
+    if (aiResponse.length > 300 && !aiResponse.includes('<!--INTERVIEW_COMPLETE:')) {
+      console.warn('🚨 SAFETY ALERT: Response too long, truncating:', aiResponse.length);
+      aiResponse = aiResponse.substring(0, 250).trim() + '...';
+    }
+
+    console.log('Processed AI response:', aiResponse);
 
     // Check if interview is complete (AI returned hidden JSON tag)
     let interviewData = null;
     let conversationalResponse = aiResponse;
+    let forceCompletion = false;
     
     if (aiResponse.includes('<!--INTERVIEW_COMPLETE:')) {
       try {
-        // Extract the JSON from the hidden comment
-        const jsonMatch = aiResponse.match(/<!--INTERVIEW_COMPLETE:(.*?)-->/s);
+        // More robust extraction with multiple fallbacks
+        let jsonMatch = aiResponse.match(/<!--INTERVIEW_COMPLETE:(.*?)-->/s);
+        
+        if (!jsonMatch) {
+          // Fallback: try to find the tag without closing
+          jsonMatch = aiResponse.match(/<!--INTERVIEW_COMPLETE:(.*)$/s);
+        }
+        
         if (jsonMatch) {
-          interviewData = JSON.parse(jsonMatch[1]);
+          let jsonString = jsonMatch[1].trim();
           
-          // Extract only the conversational part (everything before the hidden tag)
-          const conversationEnd = aiResponse.indexOf('<!--INTERVIEW_COMPLETE:');
-          conversationalResponse = aiResponse.substring(0, conversationEnd).trim();
+          // Clean up common JSON issues
+          jsonString = jsonString.replace(/\n/g, '').replace(/\r/g, '');
+          
+          // Try to extract only valid JSON part
+          const jsonStart = jsonString.indexOf('{');
+          const jsonEnd = jsonString.lastIndexOf('}');
+          
+          if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+            jsonString = jsonString.substring(jsonStart, jsonEnd + 1);
+          }
+          
+          console.log('Extracted JSON string:', jsonString);
+          
+          try {
+            interviewData = JSON.parse(jsonString);
+            console.log('Successfully parsed interview data:', interviewData);
+          } catch (parseError2) {
+            console.warn('JSON parse failed, using fallback data:', parseError2);
+            // Fallback: create basic completion data
+            interviewData = {
+              status: 'completed',
+              timestamp: new Date().toISOString(),
+              fallback: true
+            };
+          }
+          
+          // Extract conversational part more safely
+          const tagIndex = aiResponse.indexOf('<!--INTERVIEW_COMPLETE:');
+          if (tagIndex > 0) {
+            conversationalResponse = aiResponse.substring(0, tagIndex).trim();
+          } else {
+            conversationalResponse = "Perfetto! Procedo con il capitolato.";
+          }
           
           // Update lead with scope data
           const { error } = await supabase
@@ -171,11 +242,36 @@ Non procedere con altre domande finché non hai ottenuto la localizzazione.`;
             throw new Error('Failed to save interview data');
           }
 
-          console.log('Lead updated successfully with scope data');
+          console.log('✅ Lead updated successfully with scope data');
+          forceCompletion = true;
         }
       } catch (parseError) {
-        console.error('Error parsing interview data:', parseError);
-        // Continue anyway, don't break the flow
+        console.error('🚨 Error in completion processing:', parseError);
+        
+        // EMERGENCY FALLBACK: Force completion anyway
+        console.log('🔧 Applying emergency fallback completion');
+        interviewData = {
+          status: 'emergency_completed',
+          timestamp: new Date().toISOString(),
+          error: parseError instanceof Error ? parseError.message : String(parseError)
+        };
+        
+        conversationalResponse = "Perfetto! Procedo con il capitolato.";
+        forceCompletion = true;
+        
+        // Still try to update the database
+        try {
+          await supabase
+            .from('leads')
+            .update({ 
+              scope_json: interviewData,
+              status: 'interview_completed'
+            })
+            .eq('id', leadId);
+          console.log('✅ Emergency fallback: Lead updated');
+        } catch (dbError) {
+          console.error('❌ Emergency fallback: Database update failed:', dbError);
+        }
       }
     }
 
