@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { FileText, Search, Filter, Eye, Edit, Trash2, Download } from "lucide-react";
+import { FileText, Search, Filter, Eye, Edit, Trash2, Download, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -20,6 +20,7 @@ interface Lead {
   current_assignments: number;
   max_assignments: number;
   assignment_type: string;
+  capitolato_data?: any;
 }
 
 const AdminLeadsTable = () => {
@@ -43,7 +44,7 @@ const AdminLeadsTable = () => {
     try {
       const { data, error } = await supabase
         .from('leads')
-        .select('*')
+        .select('id, status, created_at, user_contact, cost_estimate_min, cost_estimate_max, current_assignments, max_assignments, assignment_type, capitolato_data')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -217,6 +218,7 @@ const AdminLeadsTable = () => {
                   <TableHead>ID</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Capitolato</TableHead>
                   <TableHead>Stima Costi</TableHead>
                   <TableHead>Assegnazioni</TableHead>
                   <TableHead>Tipo</TableHead>
@@ -225,15 +227,15 @@ const AdminLeadsTable = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isLoading ? (
+                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={9} className="text-center py-8">
                       Caricamento...
                     </TableCell>
                   </TableRow>
                 ) : filteredLeads.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                       Nessun lead trovato
                     </TableCell>
                   </TableRow>
@@ -259,6 +261,22 @@ const AdminLeadsTable = () => {
                       </TableCell>
                       <TableCell>
                         {getStatusBadge(lead.status)}
+                      </TableCell>
+                      <TableCell>
+                        {lead.capitolato_data ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open(`/capitolato?leadId=${lead.id}`, '_blank')}
+                            className="flex items-center gap-2"
+                          >
+                            <FileText className="h-4 w-4" />
+                            Visualizza
+                            <ExternalLink className="h-3 w-3" />
+                          </Button>
+                        ) : (
+                          <Badge variant="secondary">Non disponibile</Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         {lead.cost_estimate_min && lead.cost_estimate_max ? (
