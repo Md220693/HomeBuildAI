@@ -290,10 +290,18 @@ const ContactForm = ({ leadId, onSuccess }: ContactFormProps) => {
         
         {/* Development only - show debug OTP */}
         {debugOtp && (
-          <div className="mt-4 p-3 bg-yellow-100 border border-yellow-300 rounded-md">
-            <p className="text-sm text-yellow-800">
-              <strong>Debug Mode:</strong> Il tuo codice OTP è: <strong>{debugOtp}</strong>
-            </p>
+          <div className="mt-4 p-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg shadow-sm">
+            <div className="text-center">
+              <p className="text-lg font-bold text-yellow-900 mb-2">
+                🔧 MODALITÀ DEBUG ATTIVA
+              </p>
+              <p className="text-2xl font-mono font-bold text-yellow-900 bg-yellow-200 p-3 rounded border">
+                {debugOtp}
+              </p>
+              <p className="text-sm text-yellow-700 mt-2">
+                Usa questo codice per testare la verifica OTP
+              </p>
+            </div>
           </div>
         )}
       </div>
