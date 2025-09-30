@@ -25,6 +25,7 @@ const Interview = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const id = searchParams.get('leadId');
@@ -51,6 +52,16 @@ const Interview = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
+
+  // Auto-focus input after AI response
+  useEffect(() => {
+    if (!isLoading && !isComplete && messages.length > 0) {
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+    }
+  }, [messages, isLoading, isComplete]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -207,8 +218,8 @@ const Interview = () => {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
       e.preventDefault();
       sendMessage();
     }
@@ -275,11 +286,13 @@ const Interview = () => {
               <div className="space-y-3">
                 <div className="flex gap-2">
                   <Input
+                    ref={inputRef}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Scrivi la tua risposta..."
                     onKeyPress={handleKeyPress}
                     disabled={isLoading}
+                    autoFocus
                     className="flex-1"
                   />
                   <Button

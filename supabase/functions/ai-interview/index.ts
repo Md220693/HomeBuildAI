@@ -120,7 +120,7 @@ Non procedere con altre domande finché non hai ottenuto la localizzazione.`;
 
     console.log('Calling DeepSeek API with messages:', apiMessages);
 
-    // Call DeepSeek API with stricter constraints
+    // Call DeepSeek API with balanced constraints
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -130,9 +130,9 @@ Non procedere con altre domande finché non hai ottenuto la localizzazione.`;
       body: JSON.stringify({
         model: 'deepseek-chat',
         messages: apiMessages,
-        max_tokens: 150, // Drastically reduced to force short responses
+        max_tokens: 500, // Increased to allow complete responses
         temperature: 0.3, // Lower temperature for more predictable responses
-        stop: ['<!--', 'CAPITOLATO', 'STIMA', 'COSTO', '€'], // Stop tokens
+        stop: ['<!--'], // Only stop at completion tag
       }),
     });
 
@@ -147,31 +147,46 @@ Non procedere con altre domande finché non hai ottenuto la localizzazione.`;
 
     console.log('Raw DeepSeek response:', aiResponse);
     
-    // SAFETY CHECK: Detect inappropriate content and truncate
-    const forbiddenKeywords = ['capitolato', 'stima', 'costo', 'prezzo', '€', 'euro', 'preventivo', 'CAPITOLATO', 'STIMA'];
-    const containsForbidden = forbiddenKeywords.some(keyword => aiResponse.toLowerCase().includes(keyword.toLowerCase()));
+    // IMPROVED SAFETY CHECK: Only block truly inappropriate content
+    // Allow technical terms like "capitolato" and "stima" when in proper context
+    const inappropriatePatterns = [
+      /capitolato\s+preliminare.*strutturato/i, // Full capitolato generation
+      /stima\s+di\s+costo.*range/i, // Detailed cost estimates with ranges
+      /€\s*\d+[\d.,]*\s*-\s*€\s*\d+/i, // Specific euro ranges like "€20,000 - €40,000"
+      /preventivo\s+vincolante/i, // Binding quotes
+    ];
     
-    if (containsForbidden) {
+    const containsInappropriate = inappropriatePatterns.some(pattern => pattern.test(aiResponse));
+    
+    if (containsInappropriate) {
       console.warn('🚨 SAFETY ALERT: AI generated inappropriate content:', aiResponse.substring(0, 200));
       
-      // Force truncate at first forbidden word
-      const firstForbidden = forbiddenKeywords.find(keyword => aiResponse.toLowerCase().includes(keyword.toLowerCase()));
-      if (firstForbidden) {
-        const cutIndex = aiResponse.toLowerCase().indexOf(firstForbidden.toLowerCase());
-        aiResponse = aiResponse.substring(0, cutIndex).trim();
-        
-        // Add completion if response is now too short
-        if (aiResponse.length < 20) {
-          aiResponse = "Perfetto! Procedo con il capitolato.";
-          aiResponse += '\n<!--INTERVIEW_COMPLETE:{"status":"force_completed","reason":"inappropriate_content"}-->';
+      // Truncate at the start of inappropriate content
+      for (const pattern of inappropriatePatterns) {
+        const match = aiResponse.match(pattern);
+        if (match && match.index !== undefined) {
+          aiResponse = aiResponse.substring(0, match.index).trim();
+          
+          // Add completion if response is now too short
+          if (aiResponse.length < 20) {
+            aiResponse = "Perfetto! Procedo con il capitolato.";
+            aiResponse += '\n<!--INTERVIEW_COMPLETE:{"status":"force_completed","reason":"inappropriate_content"}-->';
+          }
+          break;
         }
       }
     }
     
-    // Additional safety: Truncate responses longer than 300 characters
-    if (aiResponse.length > 300 && !aiResponse.includes('<!--INTERVIEW_COMPLETE:')) {
+    // Additional safety: Only truncate extremely long responses (>500 chars)
+    if (aiResponse.length > 500 && !aiResponse.includes('<!--INTERVIEW_COMPLETE:')) {
       console.warn('🚨 SAFETY ALERT: Response too long, truncating:', aiResponse.length);
-      aiResponse = aiResponse.substring(0, 250).trim() + '...';
+      // Find the last complete sentence before 450 chars
+      const truncateAt = aiResponse.lastIndexOf('.', 450);
+      if (truncateAt > 200) {
+        aiResponse = aiResponse.substring(0, truncateAt + 1).trim();
+      } else {
+        aiResponse = aiResponse.substring(0, 450).trim() + '...';
+      }
     }
 
     console.log('Processed AI response:', aiResponse);
