@@ -48,56 +48,103 @@ serve(async (req) => {
       throw new Error('Lead data not found or incomplete');
     }
 
-    // FIX FASE 2: Enhanced scope detection and micro-intervention handling
-    let isPartialRenovation = lead.renovation_scope === 'partial';
-    const targetRooms = lead.target_rooms || [];
+    // FASE 3: ROBUST scope detection with micro-intervention logic
+    let renovationScope = lead.renovation_scope || 'unknown';
+    let targetRooms = lead.target_rooms || [];
+    let isMicroIntervention = false;
     
-    // FALLBACK: Auto-detect partial from scope_json if renovation_scope is unknown
-    if (lead.renovation_scope === 'unknown' || !lead.renovation_scope) {
-      const scopeText = JSON.stringify(lead.scope_json).toLowerCase();
-      const partialIndicators = ['solo', 'bagno', 'cucina', 'intonaco', 'soffitto', 'pittura'];
-      const hasPartialIndicators = partialIndicators.some(ind => scopeText.includes(ind));
-      
-      if (hasPartialIndicators) {
-        console.log('🔍 Auto-detected partial renovation from scope_json');
-        isPartialRenovation = true;
+    // Analyze ALL available data for scope detection
+    const allDataText = JSON.stringify({
+      scope_json: lead.scope_json,
+      renovation_scope: lead.renovation_scope,
+      target_rooms: lead.target_rooms
+    }).toLowerCase();
+    
+    console.log('Analyzing scope from data:', allDataText.substring(0, 300));
+    
+    // Detect partial renovation
+    const partialIndicators = [
+      'solo bagno', 'solo cucina', 'solo intonaco', 'solo pittura',
+      'partial', 'parziale', 'bagno', '6mq', 'soffitto', 'tetto'
+    ];
+    
+    if (renovationScope === 'unknown' || renovationScope === null) {
+      const hasPartial = partialIndicators.some(ind => allDataText.includes(ind));
+      if (hasPartial) {
+        renovationScope = 'partial';
+        console.log('🔍 Auto-detected PARTIAL scope');
+        
+        // Extract room if not already set
+        if (targetRooms.length === 0) {
+          if (allDataText.includes('bagno')) targetRooms = ['bagno'];
+          else if (allDataText.includes('cucina')) targetRooms = ['cucina'];
+          else if (allDataText.includes('camera')) targetRooms = ['camera'];
+        }
       }
     }
     
-    // Detect micro-interventions (very small jobs like "only plaster")
-    const scopeText = JSON.stringify(lead.scope_json).toLowerCase();
-    const isMicroIntervention = 
-      (scopeText.includes('solo intonaco') || 
-       scopeText.includes('solo pittura') ||
-       scopeText.includes('solo soffitto') ||
-       scopeText.includes('piccola riparazione')) &&
-      !scopeText.includes('completa') &&
-      !scopeText.includes('totale');
+    // Detect MICRO-INTERVENTION (crucial for correct pricing)
+    const microKeywords = [
+      'solo intonaco', 'solo pittura', 'intonacatura', 'tetto del bagno',
+      'soffitto del bagno', 'micro', '6mq', '6 mq', 'piccola riparazione'
+    ];
     
+    const hasMicroKeywords = microKeywords.some(kw => allDataText.includes(kw));
+    const hasCompleteKeywords = allDataText.includes('completa') || allDataText.includes('totale');
+    
+    if (hasMicroKeywords && !hasCompleteKeywords) {
+      isMicroIntervention = true;
+      renovationScope = 'partial'; // Force partial if micro
+      console.log('🎯 MICRO-INTERVENTION detected!');
+    }
+    
+    console.log('Final scope decision:', { renovationScope, targetRooms, isMicroIntervention });
+    
+    // Build SPECIFIC prompt based on intervention type
     let scopeContext = '';
     if (isMicroIntervention) {
+      const room = targetRooms.length > 0 ? targetRooms[0] : 'ambiente';
       scopeContext = `
-🎯 MICRO-INTERVENTO RILEVATO:
-- Lavoro estremamente limitato: ${targetRooms.length > 0 ? targetRooms.join(', ') : 'intervento specifico'}
-- CREA un capitolato MINIMALE con SOLO le voci necessarie
-- Stima realistica: 200-800€ per lavori tipo intonaco/pittura piccoli
-- NON generare tutte le 9 sezioni standard - solo quelle pertinenti
-- Esempio: per "solo intonaco soffitto" → solo sezioni "pitturazioni" e eventualmente "opere_accessorie"
-`;
-    } else if (isPartialRenovation && targetRooms.length > 0) {
+⚠️ ATTENZIONE: MICRO-INTERVENTO - NON RISTRUTTURAZIONE COMPLETA!
+
+Dati indicano: intervento MINIMO su ${room} (es. solo intonaco soffitto, solo pittura)
+
+ISTRUZIONI CRITICHE:
+1. Genera SOLO 1-2 capitoli pertinenti (es. "Pitturazioni" per intonaco)
+2. Stima REALISTICA: €200-€600 per micro-interventi
+3. NON inventare lavori: se dicono "solo intonaco soffitto", NON aggiungere demolizioni, impianti, pavimenti, etc.
+4. Quantità proporzionate: es. 6-10mq superficie da trattare
+
+Esempio per "intonaco soffitto bagno 6mq":
+{
+  "capitolato": {
+    "pitturazioni": {
+      "descrizione": "Ripristino intonaco soffitto bagno",
+      "lavorazioni": ["Rimozione intonaco danneggiato", "Preparazione superficie", "Applicazione intonaco antimuffa", "Finitura liscia"],
+      "materiali": ["Intonaco antimuffa", "Primer", "Materiali preparazione"],
+      "quantita_stimate": "6-8 mq di soffitto"
+    }
+  },
+  "stima_costi": {
+    "min_euro": 300,
+    "max_euro": 500,
+    "confidence": 0.75
+  }
+}
+
+NON GENERARE ristrutturazione completa da 60k-90k!`;
+    } else if (renovationScope === 'partial' && targetRooms.length > 0) {
       scopeContext = `
-IMPORTANTE - RISTRUTTURAZIONE PARZIALE:
-- L'utente vuole ristrutturare SOLO: ${targetRooms.join(', ')}
-- NON includere nel capitolato lavori su altri ambienti
-- Concentrati ESCLUSIVAMENTE sugli ambienti indicati
-- Le quantità devono essere realistiche per l'ambiente specifico
-- La stima costi deve essere proporzionata allo scope limitato
+RISTRUTTURAZIONE PARZIALE - Solo ${targetRooms.join(', ')}:
+- Genera capitoli SOLO per ${targetRooms.join(', ')}
+- NON includere altri ambienti
+- Stima proporzionata allo scope limitato
 `;
     } else {
       scopeContext = `
 RISTRUTTURAZIONE COMPLETA:
-- Include tutti gli ambienti dell'immobile
-- Considera demolizioni, impianti, finiture per tutta la casa
+- Include tutti ambienti dell'immobile
+- Demolizioni, impianti, finiture complete
 `;
     }
 

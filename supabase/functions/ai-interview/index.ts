@@ -109,33 +109,34 @@ serve(async (req) => {
 `;
     }
 
-    let systemPrompt;
-    if (promptError || !promptData) {
-      console.warn('No active system_interview prompt found, using fallback');
-      systemPrompt = `Tu sei un intervistatore AI per ristrutturazioni. Raccogli informazioni in modo conversazionale.
+    // FASE 1: Prompt DRASTICAMENTE SEMPLIFICATO per DeepSeek
+    let systemPrompt = `Tu sei un intervistatore AI per ristrutturazioni edilizie.
 
-${fileContext}
+🎯 OBIETTIVO: Raccogliere informazioni per capitolato tecnico.
 
-${scopeContext}
+📋 DOMANDE ESSENZIALI:
+1. Dove si trova l'immobile? (città, CAP)
+2. Cosa vuoi ristrutturare? (tutta la casa o solo un ambiente?)
+3. Quanti mq?
+4. Che lavori servono?
+5. Qualità materiali? (economico/standard/premium)
+6. Budget orientativo?
 
-SEQUENZA:
-1. Localizzazione (città, CAP)
-2. Scope: casa completa o solo alcuni ambienti?
-3. Se single-room: concentrati SOLO su quell'ambiente
-4. Caratteristiche, stato, interventi, qualità, budget
+🚫 REGOLE:
+- UNA DOMANDA ALLA VOLTA (max 30 parole)
+- Tono amichevole e conversazionale
+- NON generare preventivi
 
-UNA DOMANDA ALLA VOLTA (max 40 parole).
-NON generare preventivi o capitolati.
+✅ QUANDO HAI TUTTE LE INFO, SCRIVI:
+"Perfetto! Ho tutte le informazioni necessarie. Ora genererò il capitolato tecnico."
 
-COMPLETAMENTO: "Perfetto! Procedo con il capitolato."
-POI: <!--INTERVIEW_COMPLETE:{"scope":"[full/partial]","ambiente":"[se partial]"}-->`;
-    } else {
-      systemPrompt = `${promptData.content}
+POI AGGIUNGI QUESTO TAG ESATTO:
+<!--INTERVIEW_COMPLETE-->
 
 ${fileContext}
 
 ${scopeContext}`;
-    }
+
 
     // Prepare messages for DeepSeek API
     const apiMessages = [
@@ -191,142 +192,95 @@ ${scopeContext}`;
 
     console.log('Processed AI response:', aiResponse);
 
-    // Check if interview is complete (AI returned hidden JSON tag)
-    let interviewData = null;
-    let conversationalResponse = aiResponse;
-    let forceCompletion = false;
+    // FASE 2: Check completion with ROBUST conversation analysis
+    const isComplete = aiResponse.includes('<!--INTERVIEW_COMPLETE');
+    console.log('Checking interview completion:', { isComplete });
+
+    // ALWAYS analyze conversation for scope detection (not just when complete)
+    const conversationText = messages.map((m: any) => m.content).join(' ').toLowerCase();
+    let renovationScope = 'unknown';
+    let targetRooms: string[] = [];
+    let isMicroIntervention = false;
+
+    // Detect partial scope from keywords
+    const partialKeywords = [
+      'solo bagno', 'solo cucina', 'solo intonaco', 'solo pittura', 'solo soffitto',
+      'tetto del bagno', 'soffitto del bagno', 'un bagno', 'rifare il soffitto',
+      '6mq', '6 mq', 'piccola riparazione', 'intonacatura'
+    ];
     
-    if (aiResponse.includes('<!--INTERVIEW_COMPLETE:')) {
-      try {
-        // More robust extraction with multiple fallbacks
-        let jsonMatch = aiResponse.match(/<!--INTERVIEW_COMPLETE:(.*?)-->/s);
-        
-        if (!jsonMatch) {
-          // Fallback: try to find the tag without closing
-          jsonMatch = aiResponse.match(/<!--INTERVIEW_COMPLETE:(.*)$/s);
-        }
-        
-        if (jsonMatch) {
-          let jsonString = jsonMatch[1].trim();
-          
-          // Clean up common JSON issues
-          jsonString = jsonString.replace(/\n/g, '').replace(/\r/g, '');
-          
-          // Try to extract only valid JSON part
-          const jsonStart = jsonString.indexOf('{');
-          const jsonEnd = jsonString.lastIndexOf('}');
-          
-          if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
-            jsonString = jsonString.substring(jsonStart, jsonEnd + 1);
-          }
-          
-          console.log('Extracted JSON string:', jsonString);
-          
-          try {
-            interviewData = JSON.parse(jsonString);
-            console.log('Successfully parsed interview data:', interviewData);
-          } catch (parseError2) {
-            console.warn('JSON parse failed, using fallback data:', parseError2);
-            // Fallback: create basic completion data
-            interviewData = {
-              status: 'completed',
-              timestamp: new Date().toISOString(),
-              fallback: true
-            };
-          }
-          
-          // Extract conversational part more safely
-          const tagIndex = aiResponse.indexOf('<!--INTERVIEW_COMPLETE:');
-          if (tagIndex > 0) {
-            conversationalResponse = aiResponse.substring(0, tagIndex).trim();
-          } else {
-            conversationalResponse = "Perfetto! Procedo con il capitolato.";
-          }
-          
-          // FIX FASE 1: Enhanced scope detection with conversation analysis
-          let isPartialRenovation = 
-            interviewData.scope === 'parziale' || 
-            interviewData.scope === 'partial' ||
-            (interviewData.ambiente && interviewData.ambiente !== 'intera casa');
-          
-          let targetRooms = isPartialRenovation && interviewData.ambiente 
-            ? [interviewData.ambiente]
-            : null;
-          
-          // FALLBACK: Analyze conversation to detect partial scope
-          if (!isPartialRenovation) {
-            const conversationText = messages.map(m => m.content).join(' ').toLowerCase();
-            
-            // Keywords indicating partial/single-room renovation
-            const partialKeywords = [
-              'solo bagno', 'solo cucina', 'solo camera', 'solo soggiorno',
-              'un bagno', 'una stanza', 'solo intonaco', 'solo pittura',
-              'singolo ambiente', 'un ambiente', 'ristrutturare il bagno',
-              'ristrutturare la cucina', 'rifare il soffitto'
-            ];
-            
-            const hasPartialKeywords = partialKeywords.some(kw => conversationText.includes(kw));
-            
-            if (hasPartialKeywords) {
-              console.log('🔍 Partial scope detected via conversation analysis');
-              isPartialRenovation = true;
-              
-              // Try to extract room name
-              const roomMatch = conversationText.match(/(bagno|cucina|camera|soggiorno|salone|studio)/);
-              if (roomMatch) {
-                targetRooms = [roomMatch[1]];
-                console.log('🎯 Target room identified:', targetRooms);
-              }
-            }
-          }
-          
-          // Update lead with scope data
-          const { error } = await supabase
-            .from('leads')
-            .update({ 
-              scope_json: interviewData,
-              status: 'interview_completed',
-              renovation_scope: isPartialRenovation ? 'partial' : 'full',
-              target_rooms: targetRooms
-            })
-            .eq('id', leadId);
-
-          if (error) {
-            console.error('Database update error:', error);
-            throw new Error('Failed to save interview data');
-          }
-
-          console.log('✅ Lead updated successfully with scope data');
-          forceCompletion = true;
-        }
-      } catch (parseError) {
-        console.error('🚨 Error in completion processing:', parseError);
-        
-        // EMERGENCY FALLBACK: Force completion anyway
-        console.log('🔧 Applying emergency fallback completion');
-        interviewData = {
-          status: 'emergency_completed',
-          timestamp: new Date().toISOString(),
-          error: parseError instanceof Error ? parseError.message : String(parseError)
-        };
-        
-        conversationalResponse = "Perfetto! Procedo con il capitolato.";
-        forceCompletion = true;
-        
-        // Still try to update the database
-        try {
-          await supabase
-            .from('leads')
-            .update({ 
-              scope_json: interviewData,
-              status: 'interview_completed'
-            })
-            .eq('id', leadId);
-          console.log('✅ Emergency fallback: Lead updated');
-        } catch (dbError) {
-          console.error('❌ Emergency fallback: Database update failed:', dbError);
-        }
+    const hasPartialKeywords = partialKeywords.some(kw => conversationText.includes(kw));
+    
+    if (hasPartialKeywords) {
+      renovationScope = 'partial';
+      console.log('🔍 Detected PARTIAL scope from conversation');
+      
+      // Extract room
+      if (conversationText.includes('bagno')) targetRooms.push('bagno');
+      if (conversationText.includes('cucina')) targetRooms.push('cucina');
+      if (conversationText.includes('camera')) targetRooms.push('camera');
+      
+      // Detect micro-intervention (very small job)
+      if (conversationText.includes('solo intonaco') || 
+          conversationText.includes('solo pittura') ||
+          conversationText.includes('tetto') || 
+          conversationText.includes('soffitto')) {
+        isMicroIntervention = true;
+        console.log('🎯 Detected MICRO-INTERVENTION');
       }
+    } else if (conversationText.includes('tutta la casa') || 
+               conversationText.includes('casa completa') ||
+               conversationText.includes('intero appartamento')) {
+      renovationScope = 'full';
+      console.log('🏠 Detected FULL renovation scope');
+    }
+
+    console.log('Final scope analysis:', { renovationScope, targetRooms, isMicroIntervention });
+
+    // If interview is complete OR AI says it has all info, save and complete
+    if (isComplete || (renovationScope !== 'unknown' && conversationText.includes('tutte le informazioni'))) {
+      console.log('💾 Saving interview completion data...');
+      
+      const interviewData = {
+        status: 'completed',
+        detected_scope: renovationScope,
+        target_rooms: targetRooms,
+        is_micro_intervention: isMicroIntervention,
+        timestamp: new Date().toISOString(),
+        conversation_summary: conversationText.substring(0, 500)
+      };
+
+      // Extract conversational response (remove hidden tag)
+      let conversationalResponse = aiResponse;
+      const tagIndex = aiResponse.indexOf('<!--INTERVIEW_COMPLETE');
+      if (tagIndex > 0) {
+        conversationalResponse = aiResponse.substring(0, tagIndex).trim();
+      }
+
+      // Update lead with all detected data
+      const { error: updateError } = await supabase
+        .from('leads')
+        .update({
+          status: 'interview_completed',
+          renovation_scope: renovationScope,
+          target_rooms: targetRooms.length > 0 ? targetRooms : null,
+          scope_json: interviewData
+        })
+        .eq('id', leadId);
+
+      if (updateError) {
+        console.error('❌ Failed to update lead:', updateError);
+      } else {
+        console.log('✅ Lead updated successfully:', { renovationScope, targetRooms, isMicroIntervention });
+      }
+
+      return new Response(JSON.stringify({ 
+        response: conversationalResponse,
+        interview_complete: true,
+        collected_data: interviewData
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     return new Response(JSON.stringify({ 

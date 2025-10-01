@@ -210,11 +210,11 @@ const Capitolato = () => {
     }).format(amount);
   };
 
-  // FIX FASE 3: Use Badge variants instead of direct color classes
-  const getAccuracyVariant = (accuracy: number): "default" | "secondary" | "destructive" | "outline" => {
-    if (accuracy >= 0.8) return 'default'; // Uses primary color
+  // Get Badge variant for accuracy (uses semantic design tokens)
+  const getAccuracyVariant = (accuracy: number): "default" | "secondary" | "outline" => {
+    if (accuracy >= 0.8) return 'default';
     if (accuracy >= 0.7) return 'secondary';
-    return 'outline';
+    return 'outline'; // Better readability than destructive
   };
 
   const sectionTitles = {
