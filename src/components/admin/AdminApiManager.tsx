@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Eye, EyeOff, Key, RefreshCw, AlertTriangle, CheckCircle, Settings } from "lucide-react";
+import { Eye, EyeOff, Key, RefreshCw, AlertTriangle, CheckCircle, Settings, Shield, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -26,15 +26,8 @@ const AdminApiManager = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const apiKeyDefinitions = [
-    {
-      name: 'OPENAI_API_KEY',
-      description: 'OpenAI API per AI Interview e generazione contenuti',
-    },
-    {
-      name: 'DEEPSEEK_API_KEY',
-      description: 'DeepSeek API per analisi avanzate',
-    },
+  // API Keys gestibili dall'admin panel (salvate in system_settings)
+  const managedApiKeyDefinitions = [
     {
       name: 'postmark_api_key',
       description: 'Postmark API per invio email ai fornitori',
@@ -56,8 +49,27 @@ const AdminApiManager = () => {
       description: 'Numero di telefono Twilio per invio SMS',
     },
     {
-      name: 'STRIPE_SECRET_KEY',
+      name: 'stripe_secret_key',
       description: 'Stripe per pagamenti fornitori',
+    }
+  ];
+
+  // Supabase Secrets (gestiti a livello infrastruttura, solo visualizzazione)
+  const supabaseSecretsDefinitions = [
+    {
+      name: 'DEEPSEEK_API_KEY',
+      description: 'DeepSeek API per analisi avanzate e AI',
+      managedIn: 'Supabase Secrets'
+    },
+    {
+      name: 'OPENAI_API_KEY',
+      description: 'OpenAI API per AI Interview e generazione contenuti',
+      managedIn: 'Supabase Secrets'
+    },
+    {
+      name: 'SUPABASE_SERVICE_ROLE_KEY',
+      description: 'Service Role Key per operazioni admin Supabase',
+      managedIn: 'Supabase Secrets'
     }
   ];
 
@@ -80,16 +92,16 @@ const AdminApiManager = () => {
       const debugModeSetting = settings?.find(s => s.setting_key === 'otp_debug_mode');
       setOtpDebugMode(debugModeSetting?.setting_value === 'true');
 
-      // Map settings to API keys
-      const loadedKeys: ApiKey[] = apiKeyDefinitions.map(def => {
+      // Map settings to API keys (solo chiavi managed)
+      const loadedKeys: ApiKey[] = managedApiKeyDefinitions.map(def => {
         const setting = settings?.find(s => s.setting_key === def.name);
-        const hasValue = !!setting?.setting_value;
+        const hasValue = !!setting?.setting_value && setting.setting_value.trim() !== '';
         return {
           name: def.name,
           value: hasValue ? '••••••••••••••••••••••••••••••••••••••••' : '',
           status: hasValue ? 'active' : 'inactive',
           description: def.description,
-          lastUsed: setting?.updated_at ? new Date(setting.updated_at).toLocaleDateString('it-IT') : 'Mai'
+          lastUsed: setting?.updated_at ? new Date(setting.updated_at).toLocaleDateString('it-IT') : 'Non configurata'
         } as ApiKey;
       });
 
@@ -274,7 +286,53 @@ const AdminApiManager = () => {
         </CardContent>
       </Card>
 
-      {/* API Keys Section */}
+      {/* Supabase Secrets Status - Read Only */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Supabase Secrets (Solo Lettura)
+          </CardTitle>
+          <CardDescription>
+            Queste chiavi sono gestite direttamente in Supabase e non possono essere modificate da qui
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {supabaseSecretsDefinitions.map((secret) => (
+            <div key={secret.name} className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">{secret.name}</p>
+                  <Badge variant="outline" className="text-xs">
+                    {secret.managedIn}
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">{secret.description}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-500" />
+                <span className="text-sm text-muted-foreground">Configurato</span>
+              </div>
+            </div>
+          ))}
+          <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+            <Info className="h-4 w-4 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
+              Per modificare questi secrets, vai al{" "}
+              <a 
+                href="https://supabase.com/dashboard/project/wncvvncldryfqqvpmnor/settings/functions"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                pannello Supabase
+              </a>
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Managed API Keys Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -282,7 +340,7 @@ const AdminApiManager = () => {
             Gestione Chiavi API
           </CardTitle>
           <CardDescription>
-            Configura le chiavi API per servizi esterni (Postmark per email, Twilio per SMS, etc.)
+            Configura le chiavi API per servizi esterni (Postmark per email, Twilio per SMS, Stripe per pagamenti)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
