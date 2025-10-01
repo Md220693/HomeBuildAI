@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Upload as UploadIcon, FileText, Image, X, CheckCircle, Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Upload as UploadIcon, FileText, Image, X, CheckCircle, Loader2, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +17,7 @@ interface UploadedFile {
 const Upload = () => {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [skipFiles, setSkipFiles] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -93,22 +95,28 @@ const Upload = () => {
     setIsUploading(true);
     
     try {
-      // Upload planimetria
-      const planimetriaFile = planimetrie[0].file;
-      const planimetriaUrl = await uploadFileToSupabase(planimetriaFile, 'planimetrie');
-      
-      if (!planimetriaUrl) {
-        throw new Error('Errore nel caricamento della planimetria');
+      let planimetriaUrl: string | null = null;
+      const fotoUrls: string[] = [];
+
+      // Upload planimetria only if available
+      if (planimetrie.length > 0) {
+        const planimetriaFile = planimetrie[0].file;
+        planimetriaUrl = await uploadFileToSupabase(planimetriaFile, 'planimetrie');
+        
+        if (!planimetriaUrl) {
+          throw new Error('Errore nel caricamento della planimetria');
+        }
       }
 
-      // Upload foto
-      const fotoUrls: string[] = [];
-      for (const fotoFile of foto) {
-        const fotoUrl = await uploadFileToSupabase(fotoFile.file, 'foto');
-        if (!fotoUrl) {
-          throw new Error(`Errore nel caricamento della foto ${fotoFile.file.name}`);
+      // Upload foto only if available
+      if (foto.length > 0) {
+        for (const fotoFile of foto) {
+          const fotoUrl = await uploadFileToSupabase(fotoFile.file, 'foto');
+          if (!fotoUrl) {
+            throw new Error(`Errore nel caricamento della foto ${fotoFile.file.name}`);
+          }
+          fotoUrls.push(fotoUrl);
         }
-        fotoUrls.push(fotoUrl);
       }
 
       // Create lead in database
@@ -117,7 +125,7 @@ const Upload = () => {
         .insert({
           status: 'new',
           planimetria_url: planimetriaUrl,
-          foto_urls: fotoUrls
+          foto_urls: fotoUrls.length > 0 ? fotoUrls : null
         })
         .select()
         .single();
@@ -127,8 +135,10 @@ const Upload = () => {
       }
 
       toast({
-        title: "File caricati con successo!",
-        description: "Procediamo con l'intervista AI per analizzare il tuo progetto"
+        title: skipFiles ? "Procediamo con l'intervista!" : "File caricati con successo!",
+        description: skipFiles 
+          ? "L'AI raccoglierà tutte le informazioni tramite l'intervista"
+          : "Procediamo con l'intervista AI per analizzare il tuo progetto"
       });
 
       // Navigate to interview page with leadId
@@ -149,7 +159,8 @@ const Upload = () => {
   const planimetrie = uploadedFiles.filter(f => f.type === 'planimetria');
   const foto = uploadedFiles.filter(f => f.type === 'foto');
   
-  const canProceed = planimetrie.length >= 1 && foto.length >= 4;
+  const hasMinimumFiles = foto.length >= 4 || planimetrie.length >= 1;
+  const canProceed = hasMinimumFiles || skipFiles;
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
@@ -159,15 +170,15 @@ const Upload = () => {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
             <h1 className="text-4xl font-bold text-foreground mb-4">
-              Carica planimetria e foto
+              Carica foto e planimetria (opzionale)
             </h1>
             <p className="text-xl text-muted-foreground mb-4">
-              Carica la planimetria dell'immobile e foto di tutte le stanze: questi dati permettono all'AI di generare il capitolato personalizzato.
+              Carica almeno 4 foto o 1 planimetria per una stima più accurata. Puoi anche proseguire senza caricare file se preferisci.
             </p>
             <div className="bg-accent/10 border border-accent/20 rounded-lg p-4 text-sm text-foreground/80">
-              <p className="mb-2"><strong>Formati supportati:</strong> PDF, JPG, PNG. Devi caricare almeno 4–6 foto + planimetria obbligatoria.</p>
-              <p className="mb-2"><strong>Per migliori risultati:</strong> Foto con luce naturale, planimetria chiara, orientamento corretto aiuta la qualità della stima.</p>
-              <p><strong>Privacy:</strong> I dati che carichi restano privati e non saranno condivisi senza il tuo consenso.</p>
+              <p className="mb-2"><strong>Formati supportati:</strong> PDF, JPG, PNG per planimetrie; JPG, PNG per foto.</p>
+              <p className="mb-2"><strong>Per migliori risultati:</strong> Carica foto con luce naturale e planimetria chiara. Più materiale fornisci, più accurata sarà la stima.</p>
+              <p><strong>Privacy:</strong> I tuoi dati restano privati e non saranno condivisi senza il tuo consenso.</p>
             </div>
           </div>
 
@@ -178,7 +189,7 @@ const Upload = () => {
                 <FileText className="h-12 w-12 text-primary mx-auto mb-4" />
                 <h2 className="text-2xl font-semibold mb-2">Planimetrie</h2>
                 <p className="text-muted-foreground mb-4">
-                  Almeno 1 planimetria (PDF, JPG, PNG)
+                  Opzionale - Consigliata (PDF, JPG, PNG)
                 </p>
               </div>
               
@@ -235,7 +246,7 @@ const Upload = () => {
                 <Image className="h-12 w-12 text-primary mx-auto mb-4" />
                 <h2 className="text-2xl font-semibold mb-2">Foto</h2>
                 <p className="text-muted-foreground mb-4">
-                  Minimo 4 foto dell'immobile (JPG, PNG)
+                  Opzionale - Consigliate almeno 4 foto (JPG, PNG)
                 </p>
               </div>
               
@@ -291,6 +302,39 @@ const Upload = () => {
             </Card>
           </div>
 
+          {/* Checkbox per saltare l'upload */}
+          <Card className="p-6 mb-8 bg-muted/30">
+            <div className="flex items-start space-x-3">
+              <Checkbox 
+                id="skip-files" 
+                checked={skipFiles}
+                onCheckedChange={(checked) => setSkipFiles(checked as boolean)}
+                disabled={isUploading}
+              />
+              <div className="flex-1">
+                <label 
+                  htmlFor="skip-files" 
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                >
+                  Non ho foto o planimetria disponibili
+                </label>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Prosegui direttamente con l'intervista AI. L'AI raccoglierà tutte le informazioni necessarie tramite domande dettagliate.
+                </p>
+              </div>
+            </div>
+            
+            {skipFiles && (
+              <div className="mt-4 flex items-start space-x-2 bg-orange-500/10 border border-orange-500/20 rounded-lg p-3">
+                <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-foreground/80">
+                  <p className="font-medium text-orange-600 mb-1">Nota importante</p>
+                  <p>Senza foto o planimetria, la stima potrebbe essere meno accurata. L'AI farà più domande durante l'intervista per compensare la mancanza di materiale visivo.</p>
+                </div>
+              </div>
+            )}
+          </Card>
+
           <div className="text-center">
             <Button 
               variant="hero" 
@@ -304,6 +348,8 @@ const Upload = () => {
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Caricamento in corso...
                 </>
+              ) : skipFiles ? (
+                "Inizia l'intervista AI"
               ) : (
                 "Continua con l'intervista AI"
               )}
@@ -311,7 +357,7 @@ const Upload = () => {
             
             {!canProceed && !isUploading && (
               <p className="text-muted-foreground mt-4">
-                Carica almeno 1 planimetria e 4 foto per continuare
+                Carica almeno 4 foto o 1 planimetria, oppure seleziona l'opzione per proseguire senza file
               </p>
             )}
           </div>
