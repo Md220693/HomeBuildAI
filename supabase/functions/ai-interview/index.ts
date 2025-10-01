@@ -127,10 +127,12 @@ serve(async (req) => {
 - Tono amichevole e conversazionale
 - NON generare preventivi
 
-✅ QUANDO HAI TUTTE LE INFO, SCRIVI ESATTAMENTE QUESTO:
-"Perfetto! Ho tutte le informazioni necessarie. Ora genererò il capitolato tecnico.<!--INTERVIEW_COMPLETE-->"
+✅ QUANDO HAI RACCOLTO TUTTE LE 6 INFORMAZIONI ESSENZIALI, SCRIVI ESATTAMENTE:
+"Perfetto! Ho tutte le informazioni necessarie. Ora genererò il capitolato tecnico. COMPLETATO"
 
-IMPORTANTE: Il tag <!--INTERVIEW_COMPLETE--> deve essere SUBITO dopo la frase, senza andare a capo.
+IMPORTANTE: 
+- La parola COMPLETATO deve essere presente per segnalare la fine
+- Scrivi ESATTAMENTE quella frase con COMPLETATO alla fine
 
 ${fileContext}
 
@@ -191,8 +193,21 @@ ${scopeContext}`;
 
     console.log('Processed AI response:', aiResponse);
 
-    // FASE 2: Check completion with ROBUST conversation analysis
-    const isComplete = aiResponse.includes('<!--INTERVIEW_COMPLETE');
+    // FASE 1: Check multiple completion signals
+    const responseText = aiResponse.trim();
+    const responseLower = responseText.toLowerCase();
+    
+    // Primary completion check
+    const isComplete = responseText.includes('COMPLETATO') || 
+                      responseText.includes('<!--INTERVIEW_COMPLETE-->') || 
+                      responseText.includes('INTERVIEW_COMPLETE');
+    
+    console.log('🔍 Completion check:', { 
+      hasCompletato: responseText.includes('COMPLETATO'),
+      hasTag: responseText.includes('<!--INTERVIEW_COMPLETE-->'),
+      responsePreview: responseText.substring(0, 100)
+    });
+
     console.log('Checking interview completion:', { isComplete });
 
     // ALWAYS analyze conversation for scope detection (not just when complete)
@@ -241,11 +256,36 @@ ${scopeContext}`;
 
     console.log('Final scope analysis:', { detectedRenovationScope, detectedTargetRooms, isMicroIntervention });
 
-    // FASE 2: Auto-complete if AI says it has all info OR scope is detected with confirmation phrase
-    const hasCompletionPhrase = conversationText.includes('tutte le informazioni') || 
-                                 conversationText.includes('ho tutte le informazioni');
+    // FASE 2: Multi-Level Fallback System (CASE-INSENSITIVE)
+    const conversationLower = conversationText.toLowerCase();
+    const lastUserMessage = (messages[messages.length - 1]?.content || '').toLowerCase();
+    const messageCount = messages.length;
     
-    if (isComplete || (detectedRenovationScope !== 'unknown' && hasCompletionPhrase)) {
+    // Fallback Level 1: AI explicitly signals completion
+    const hasCompletionPhrase = conversationLower.includes('tutte le informazioni') || 
+                                 conversationLower.includes('ho tutte le informazioni') ||
+                                 conversationLower.includes('completato');
+    
+    // Fallback Level 2: User says "no" to budget question (last question)
+    const userRefusedBudget = (lastUserMessage === 'no' || lastUserMessage === 'no grazie') && 
+                               conversationLower.includes('budget');
+    
+    // Fallback Level 3: Message count threshold with detected scope (6+ exchanges)
+    const messageThresholdReached = messageCount >= 12 && detectedRenovationScope !== 'unknown';
+    
+    console.log('🔍 Fallback analysis:', {
+      hasCompletionPhrase,
+      userRefusedBudget,
+      messageThresholdReached,
+      messageCount,
+      detectedScope: detectedRenovationScope
+    });
+    
+    // TRIGGER AUTO-COMPLETION if ANY fallback is met
+    if (isComplete || 
+        (detectedRenovationScope !== 'unknown' && hasCompletionPhrase) ||
+        userRefusedBudget ||
+        messageThresholdReached) {
       console.log('💾 Saving interview completion data...');
       
       const interviewData = {
