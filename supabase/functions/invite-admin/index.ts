@@ -6,6 +6,47 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+async function sendEmailWithPostmark(to: string, subject: string, htmlBody: string, textBody: string) {
+  const postmarkToken = Deno.env.get('postmark');
+  
+  if (!postmarkToken) {
+    console.log('Postmark token not configured, skipping email');
+    return { success: false, error: 'Email service not configured' };
+  }
+
+  try {
+    const response = await fetch('https://api.postmarkapp.com/email', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-Postmark-Server-Token': postmarkToken
+      },
+      body: JSON.stringify({
+        From: 'BuildHomeAI <noreply@buildhomeai.com>',
+        To: to,
+        Subject: subject,
+        HtmlBody: htmlBody,
+        TextBody: textBody,
+        MessageStream: 'outbound'
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('Postmark API error:', errorData);
+      return { success: false, error: 'Failed to send email' };
+    }
+
+    const data = await response.json();
+    console.log('Email sent successfully via Postmark:', data.MessageID);
+    return { success: true, messageId: data.MessageID };
+  } catch (error) {
+    console.error('Error sending email:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 interface AdminInviteRequest {
   email: string;
   firstName?: string;
@@ -99,12 +140,39 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Admin user created successfully');
 
+    // Send invitation email
+    const emailResult = await sendEmailWithPostmark(
+      email,
+      'Invito a BuildHomeAI Admin Console',
+      `
+        <html>
+          <body style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2>Benvenuto in BuildHomeAI</h2>
+            <p>Ciao ${firstName || 'Admin'},</p>
+            <p>Sei stato invitato ad accedere alla console di amministrazione BuildHomeAI.</p>
+            <p><strong>Email:</strong> ${email}<br>
+            <strong>Password temporanea:</strong> ${userPassword}</p>
+            <p>Per motivi di sicurezza, ti consigliamo di cambiare la password al primo accesso.</p>
+            <p><a href="${supabaseUrl}/auth/v1/verify" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 10px;">Accedi alla Console</a></p>
+            <p>Se hai domande, contatta il supporto tecnico.</p>
+            <p>Il Team BuildHomeAI</p>
+          </body>
+        </html>
+      `,
+      `Benvenuto in BuildHomeAI\n\nCiao ${firstName || 'Admin'},\n\nSei stato invitato ad accedere alla console di amministrazione BuildHomeAI.\n\nEmail: ${email}\nPassword temporanea: ${userPassword}\n\nPer motivi di sicurezza, ti consigliamo di cambiare la password al primo accesso.\n\nIl Team BuildHomeAI`
+    );
+
+    if (!emailResult.success) {
+      console.warn('Failed to send invitation email:', emailResult.error);
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: 'Admin user created successfully',
         userId: authData.user.id,
-        email: email
+        email: email,
+        emailSent: emailResult.success
       }),
       {
         status: 200,

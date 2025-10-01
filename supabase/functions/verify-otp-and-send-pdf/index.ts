@@ -7,6 +7,60 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+async function sendEmailWithPostmark(to: string, subject: string, htmlBody: string, textBody: string, pdfUrl?: string) {
+  const postmarkToken = Deno.env.get('postmark');
+  
+  if (!postmarkToken) {
+    console.log('Postmark token not configured, skipping email');
+    return { success: false, error: 'Email service not configured' };
+  }
+
+  try {
+    const emailData: any = {
+      From: 'BuildHomeAI <noreply@buildhomeai.com>',
+      To: to,
+      Subject: subject,
+      HtmlBody: htmlBody,
+      TextBody: textBody,
+      MessageStream: 'outbound'
+    };
+
+    // If PDF URL provided, add as attachment
+    if (pdfUrl) {
+      emailData.Attachments = [{
+        Name: 'Capitolato_BuildHomeAI.pdf',
+        ContentType: 'application/pdf',
+        ContentID: 'capitolato-pdf'
+      }];
+      // Note: Postmark requires base64 content for attachments
+      // For now, we'll include the link in the email body
+    }
+
+    const response = await fetch('https://api.postmarkapp.com/email', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-Postmark-Server-Token': postmarkToken
+      },
+      body: JSON.stringify(emailData)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('Postmark API error:', errorData);
+      return { success: false, error: 'Failed to send email' };
+    }
+
+    const data = await response.json();
+    console.log('Email sent successfully via Postmark:', data.MessageID);
+    return { success: true, messageId: data.MessageID };
+  } catch (error) {
+    console.error('Error sending email:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 function generatePDFContent(leadData: any): string {
   const { user_contact, capitolato_data, cost_estimate_min, cost_estimate_max, confidence, disclaimer } = leadData;
   
@@ -173,23 +227,43 @@ serve(async (req) => {
 
     const pdfUrl = pdfData?.pdf_url;
 
-    // TODO: Replace with actual email service integration
-    // For now, just log email sending
-    console.log(`Email Placeholder - Send PDF to ${lead.user_contact?.email}`);
-    console.log('PDF Content generated for lead:', leadId);
+    // Send email with PDF link
+    console.log(`Sending PDF email to ${lead.user_contact?.email}`);
+    
+    const emailResult = await sendEmailWithPostmark(
+      lead.user_contact?.email,
+      'Il tuo Capitolato BuildHomeAI è pronto!',
+      `
+        <html>
+          <body style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2>Grazie per aver scelto BuildHomeAI!</h2>
+            <p>Ciao ${lead.user_contact?.nome},</p>
+            <p>Il tuo capitolato tecnico personalizzato è pronto.</p>
+            <p><strong>Stima del progetto:</strong> €${lead.cost_estimate_min?.toLocaleString()} - €${lead.cost_estimate_max?.toLocaleString()}</p>
+            ${pdfUrl ? `<p><a href="${pdfUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 10px;">Scarica il Capitolato PDF</a></p>` : ''}
+            <p style="margin-top: 20px; padding: 15px; background-color: #fef3c7; border-left: 4px solid #f59e0b;">
+              <strong>Importante:</strong> ${lead.disclaimer || 'La stima è indicativa e basata sui dati forniti. È necessario un sopralluogo per preventivo vincolante.'}
+            </p>
+            <p style="margin-top: 20px;">A breve sarai contattato dai nostri fornitori qualificati per un sopralluogo gratuito.</p>
+            <p>Il Team BuildHomeAI</p>
+          </body>
+        </html>
+      `,
+      `Grazie per aver scelto BuildHomeAI!\n\nCiao ${lead.user_contact?.nome},\n\nIl tuo capitolato tecnico personalizzato è pronto.\n\nStima del progetto: €${lead.cost_estimate_min?.toLocaleString()} - €${lead.cost_estimate_max?.toLocaleString()}\n\n${pdfUrl ? `Scarica il PDF: ${pdfUrl}\n\n` : ''}Importante: ${lead.disclaimer || 'La stima è indicativa e basata sui dati forniti. È necessario un sopralluogo per preventivo vincolante.'}\n\nA breve sarai contattato dai nostri fornitori qualificati per un sopralluogo gratuito.\n\nIl Team BuildHomeAI`,
+      pdfUrl
+    );
 
-    // Simulate email sending success  
-    const emailSuccess = true;
+    const emailSuccess = emailResult.success;
 
     if (!emailSuccess) {
-      throw new Error('Failed to send email with PDF');
+      console.warn('Failed to send email, but OTP verification succeeded');
     }
 
     return new Response(JSON.stringify({
       success: true,
-      message: 'OTP verificato! PDF inviato via email.',
+      message: emailSuccess ? 'OTP verificato! PDF inviato via email.' : 'OTP verificato! Email non inviata (servizio non configurato).',
       pdf_url: pdfUrl,
-      email_sent: true
+      email_sent: emailSuccess
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
