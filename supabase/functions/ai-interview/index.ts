@@ -29,10 +29,10 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get lead data to check for existing files and skip flag
+    // Get lead data to check for existing files, skip flag, and renovation scope
     const { data: leadData, error: leadError } = await supabase
       .from('leads')
-      .select('planimetria_url, foto_urls, skip_files')
+      .select('planimetria_url, foto_urls, skip_files, renovation_scope, target_rooms')
       .eq('id', leadId)
       .single();
 
@@ -44,11 +44,15 @@ serve(async (req) => {
     const hasSkippedFiles = leadData?.skip_files === true;
     const hasPlanimetria = leadData?.planimetria_url != null;
     const hasFoto = leadData?.foto_urls != null && leadData.foto_urls.length >= 4;
+    const renovationScope = leadData?.renovation_scope || 'unknown';
+    const targetRooms = leadData?.target_rooms || [];
 
-    console.log('Lead file data:', { 
+    console.log('Lead context data:', { 
       planimetria_url: leadData?.planimetria_url, 
       foto_urls: leadData?.foto_urls,
-      skip_files: hasSkippedFiles
+      skip_files: hasSkippedFiles,
+      renovation_scope: renovationScope,
+      target_rooms: targetRooms
     });
 
     // Get system interview prompt from database
@@ -59,24 +63,49 @@ serve(async (req) => {
       .eq('is_active', true)
       .single();
 
-    // Build file context based on uploaded files
+    // Build comprehensive context for the AI
     let fileContext = '';
     if (hasSkippedFiles) {
       fileContext = `
-CONTESTO FILE: L'utente ha scelto di procedere SENZA file.
-- NON chiedere MAI di caricare file durante l'intervista
-- Procedi solo con domande dettagliate
+📁 IMPORTANTE: L'utente ha scelto di procedere SENZA caricare foto o planimetria.
+- NON chiedere mai di caricare file durante l'intervista
+- Procedi direttamente con le domande dettagliate
 `;
     } else if (hasPlanimetria || hasFoto) {
       fileContext = `
-CONTESTO FILE: File già caricati (${hasPlanimetria ? 'planimetria' : ''}${hasPlanimetria && hasFoto ? ' + ' : ''}${hasFoto ? `${leadData.foto_urls.length} foto` : ''}).
-- NON chiedere altri file, procedi con l'intervista
+📁 OTTIMO: L'utente ha caricato ${hasPlanimetria ? 'la planimetria' : ''}${hasPlanimetria && hasFoto ? ' e ' : ''}${hasFoto ? `${leadData.foto_urls.length} foto` : ''}.
+- Tieni in considerazione questi documenti durante l'intervista
+- NON chiedere di caricare altri file
 `;
     } else {
       fileContext = `
-CONTESTO FILE: Nessun file caricato ancora.
-- Suggerisci gentilmente caricamento MA procedi comunque con le domande
-- Non bloccare l'intervista
+📁 NOTA: L'utente non ha ancora caricato planimetria o foto.
+- Se ha i documenti, suggerisci gentilmente di caricarli
+- Se non li ha, procedi comunque con domande dettagliate
+- NON bloccare l'intervista per i file mancanti
+`;
+    }
+
+    // Build scope context
+    let scopeContext = '';
+    if (renovationScope === 'partial' && targetRooms.length > 0) {
+      scopeContext = `
+🎯 SCOPE RILEVATO: Ristrutturazione PARZIALE
+- Ambienti target: ${targetRooms.join(', ')}
+- CONCENTRATI SOLO su questi ambienti nelle tue domande
+- NON chiedere informazioni su altri ambienti dell'immobile
+`;
+    } else if (renovationScope === 'full') {
+      scopeContext = `
+🎯 SCOPE RILEVATO: Ristrutturazione COMPLETA
+- Raccogli informazioni su TUTTI gli ambienti
+- Chiedi dettagli per ogni stanza sistematicamente
+`;
+    } else {
+      scopeContext = `
+🎯 SCOPE: Da determinare
+- CHIEDI come seconda domanda: "Vuoi ristrutturare l'intera casa o solo alcuni ambienti specifici?"
+- In base alla risposta, adatta tutte le domande successive
 `;
     }
 
@@ -86,6 +115,8 @@ CONTESTO FILE: Nessun file caricato ancora.
       systemPrompt = `Tu sei un intervistatore AI per ristrutturazioni. Raccogli informazioni in modo conversazionale.
 
 ${fileContext}
+
+${scopeContext}
 
 SEQUENZA:
 1. Localizzazione (città, CAP)
@@ -101,7 +132,9 @@ POI: <!--INTERVIEW_COMPLETE:{"scope":"[full/partial]","ambiente":"[se partial]"}
     } else {
       systemPrompt = `${promptData.content}
 
-${fileContext}`;
+${fileContext}
+
+${scopeContext}`;
     }
 
     // Prepare messages for DeepSeek API
