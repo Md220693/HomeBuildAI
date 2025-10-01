@@ -115,26 +115,9 @@ const Interview = () => {
         setResponseTimeout(null);
       }
 
-      // FRONTEND SAFETY CHECK: Only block truly inappropriate long responses
-      // Allow technical terms when used appropriately in interview context
-      const responseContent = data.response || '';
-      
-      // Only intervene if response is both long AND contains completion markers inappropriately
-      const isTooLong = responseContent.length > 1500;
-      const hasEarlyCompletion = responseContent.includes('<!--INTERVIEW_COMPLETE') && messages.length < 4;
-      
-      if (isTooLong && hasEarlyCompletion) {
-        console.warn('🚨 FRONTEND SAFETY: Detected premature completion in long response');
-        
-        toast({
-          variant: "destructive",
-          title: "Risposta inappropriata rilevata",
-          description: "L'AI ha generato una risposta troppo lunga. Forziamo il completamento dell'intervista.",
-        });
-        
-        await forceCompleteInterview();
-        return;
-      }
+      // NO FRONTEND SAFETY CHECKS
+      // Let backend handle all content validation
+      // Frontend just displays what backend sends
 
       const aiMessage: Message = { role: 'assistant', content: data.response };
       setMessages(prev => [...prev, aiMessage]);

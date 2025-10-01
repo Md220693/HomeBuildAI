@@ -256,9 +256,11 @@ export type Database = {
           otp_verified_at: string | null
           pdf_url: string | null
           planimetria_url: string | null
+          renovation_scope: string | null
           scope_json: Json | null
           skip_files: boolean | null
           status: string
+          target_rooms: string[] | null
           updated_at: string
           user_contact: Json | null
         }
@@ -281,9 +283,11 @@ export type Database = {
           otp_verified_at?: string | null
           pdf_url?: string | null
           planimetria_url?: string | null
+          renovation_scope?: string | null
           scope_json?: Json | null
           skip_files?: boolean | null
           status?: string
+          target_rooms?: string[] | null
           updated_at?: string
           user_contact?: Json | null
         }
@@ -306,9 +310,11 @@ export type Database = {
           otp_verified_at?: string | null
           pdf_url?: string | null
           planimetria_url?: string | null
+          renovation_scope?: string | null
           scope_json?: Json | null
           skip_files?: boolean | null
           status?: string
+          target_rooms?: string[] | null
           updated_at?: string
           user_contact?: Json | null
         }

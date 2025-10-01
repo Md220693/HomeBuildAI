@@ -40,7 +40,7 @@ serve(async (req) => {
     // Get lead data with scope
     const { data: lead, error: leadError } = await supabase
       .from('leads')
-      .select('scope_json')
+      .select('scope_json, renovation_scope, target_rooms')
       .eq('id', leadId)
       .single();
 
@@ -48,16 +48,43 @@ serve(async (req) => {
       throw new Error('Lead data not found or incomplete');
     }
 
+    // Determine renovation scope for context
+    const isPartialRenovation = lead.renovation_scope === 'partial';
+    const targetRooms = lead.target_rooms || [];
+    
+    let scopeContext = '';
+    if (isPartialRenovation && targetRooms.length > 0) {
+      scopeContext = `
+IMPORTANTE - RISTRUTTURAZIONE PARZIALE:
+- L'utente vuole ristrutturare SOLO: ${targetRooms.join(', ')}
+- NON includere nel capitolato lavori su altri ambienti
+- Concentrati ESCLUSIVAMENTE sugli ambienti indicati
+- Le quantità devono essere realistiche per l'ambiente specifico
+- La stima costi deve essere proporzionata allo scope limitato
+`;
+    } else {
+      scopeContext = `
+RISTRUTTURAZIONE COMPLETA:
+- Include tutti gli ambienti dell'immobile
+- Considera demolizioni, impianti, finiture per tutta la casa
+`;
+    }
+
     const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
     if (!deepseekApiKey) {
       throw new Error('DEEPSEEK_API_KEY is not configured');
     }
 
-    // Prepare prompt with lead data
+    // Prepare prompt with lead data and scope context
     const scopeData = JSON.stringify(lead.scope_json, null, 2);
-    const fullPrompt = `${promptData.content}\n\nDATI PROGETTO:\n${scopeData}`;
+    const fullPrompt = `${promptData.content}
 
-    console.log('Generating capitolato for lead:', leadId);
+${scopeContext}
+
+DATI PROGETTO:
+${scopeData}`;
+
+    console.log('Generating capitolato for lead:', leadId, 'scope:', lead.renovation_scope);
 
     // Call DeepSeek API
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {

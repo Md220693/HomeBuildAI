@@ -59,80 +59,49 @@ serve(async (req) => {
       .eq('is_active', true)
       .single();
 
-    // Build file context information based on skip_files flag and uploaded files
+    // Build file context based on uploaded files
     let fileContext = '';
     if (hasSkippedFiles) {
       fileContext = `
-IMPORTANTE: L'utente ha scelto di procedere SENZA caricare foto o planimetria.
-- NON chiedere mai di caricare file durante l'intervista
-- Procedi direttamente con le domande per raccogliere tutte le informazioni necessarie
-- Fai domande più dettagliate per compensare la mancanza di documenti visivi
-- Chiedi specifiche su dimensioni, stato attuale, e dettagli degli ambienti da ristrutturare
+CONTESTO FILE: L'utente ha scelto di procedere SENZA file.
+- NON chiedere MAI di caricare file durante l'intervista
+- Procedi solo con domande dettagliate
 `;
     } else if (hasPlanimetria || hasFoto) {
       fileContext = `
-OTTIMO: L'utente ha caricato ${hasPlanimetria ? 'la planimetria' : ''}${hasPlanimetria && hasFoto ? ' e ' : ''}${hasFoto ? `${leadData.foto_urls.length} foto` : ''}.
-- Tieni in considerazione questi documenti durante l'intervista
-- Puoi fare riferimento ai file caricati quando appropriato
-- NON chiedere di caricare altri file
+CONTESTO FILE: File già caricati (${hasPlanimetria ? 'planimetria' : ''}${hasPlanimetria && hasFoto ? ' + ' : ''}${hasFoto ? `${leadData.foto_urls.length} foto` : ''}).
+- NON chiedere altri file, procedi con l'intervista
 `;
     } else {
       fileContext = `
-NOTA: L'utente non ha ancora caricato planimetria o foto.
-- Se l'utente le ha con sé, suggerisci gentilmente di caricarle per una valutazione più precisa
-- Se non le ha, procedi comunque con domande dettagliate
-- Non bloccare l'intervista per i file mancanti
+CONTESTO FILE: Nessun file caricato ancora.
+- Suggerisci gentilmente caricamento MA procedi comunque con le domande
+- Non bloccare l'intervista
 `;
     }
 
     let systemPrompt;
     if (promptError || !promptData) {
       console.warn('No active system_interview prompt found, using fallback');
-      // Ultra-rigid fallback prompt
-      systemPrompt = `Tu sei ESCLUSIVAMENTE un RACCOGLITORE DI INFORMAZIONI per progetti di ristrutturazione. NIENT'ALTRO.
+      systemPrompt = `Tu sei un intervistatore AI per ristrutturazioni. Raccogli informazioni in modo conversazionale.
 
 ${fileContext}
 
-🚫 VIETATO ASSOLUTO:
-- NON scrivere capitolati, preventivi, stime di costo
-- NON dare consigli tecnici o raccomandazioni
-- NON usare parole: "capitolato", "stima", "costo", "prezzo", "€", "euro", "preventivo"
-- NON superare 50 parole per risposta
-- NON generare contenuti oltre la semplice domanda
+SEQUENZA:
+1. Localizzazione (città, CAP)
+2. Scope: casa completa o solo alcuni ambienti?
+3. Se single-room: concentrati SOLO su quell'ambiente
+4. Caratteristiche, stato, interventi, qualità, budget
 
-✅ PUOI SOLO:
-- Fare UNA domanda breve alla volta (max 25 parole)
-- Raccogliere le risposte dell'utente
-- Passare alla domanda successiva
+UNA DOMANDA ALLA VOLTA (max 40 parole).
+NON generare preventivi o capitolati.
 
-SEQUENZA RIGIDA:
-1. "Dove si trova l'immobile? (via, città, CAP)"
-2. "Che tipo di immobile e quanti mq?"
-3. "Piano, ascensore, anno costruzione?"
-4. "Stato impianti attuali?"
-5. "Quali lavori vuoi fare?"
-6. "Budget orientativo?"
-7. "Quando vuoi iniziare?"
-
-FINE INTERVISTA: Quando hai TUTTE le risposte, scrivi ESATTAMENTE:
-"Perfetto! Procedo con il capitolato."
-
-POI aggiungi SOLO il tag:
-<!--INTERVIEW_COMPLETE:{"dati":"raccolti"}-->`;
+COMPLETAMENTO: "Perfetto! Procedo con il capitolato."
+POI: <!--INTERVIEW_COMPLETE:{"scope":"[full/partial]","ambiente":"[se partial]"}-->`;
     } else {
       systemPrompt = `${promptData.content}
 
-${fileContext}
-
-IMPORTANTE: Domanda iniziale obbligatoria:
-- Chiedi sempre come PRIMA domanda: "Dove si trova l'immobile da ristrutturare? (Città, zona/quartiere e CAP se lo conosci)"
-- Non procedere finché non hai la localizzazione
-
-IMPORTANTE: Scope del progetto:
-- Dopo la localizzazione, chiedi esplicitamente: "Vuoi ristrutturare l'intera casa o solo alcuni ambienti specifici?"
-- Se risponde "solo un ambiente" (es. solo bagno, solo cucina), adatta TUTTE le domande successive a quel singolo ambiente
-- Non fare domande su altri ambienti se il cliente vuole ristrutturare solo uno specifico
-- Per ristrutturazioni parziali, concentrati su: dimensioni dell'ambiente, stato attuale, lavori specifici richiesti, materiali desiderati`;
+${fileContext}`;
     }
 
     // Prepare messages for DeepSeek API
@@ -170,46 +139,16 @@ IMPORTANTE: Scope del progetto:
 
     console.log('Raw DeepSeek response:', aiResponse);
     
-    // IMPROVED SAFETY CHECK: Only block truly inappropriate content
-    // Allow technical terms like "capitolato" and "stima" when in proper context
-    const inappropriatePatterns = [
-      /capitolato\s+preliminare.*strutturato/i, // Full capitolato generation
-      /stima\s+di\s+costo.*range/i, // Detailed cost estimates with ranges
-      /€\s*\d+[\d.,]*\s*-\s*€\s*\d+/i, // Specific euro ranges like "€20,000 - €40,000"
-      /preventivo\s+vincolante/i, // Binding quotes
-    ];
+    // MINIMAL SAFETY CHECK: Only prevent extreme inappropriate responses
+    // Allow all technical construction terms
+    const shouldForceComplete = 
+      aiResponse.length > 1000 && 
+      /preventivo\s+vincolante|€\s*\d+[\d.,]*\s*-\s*€\s*\d+[\d.,]*/.test(aiResponse);
     
-    const containsInappropriate = inappropriatePatterns.some(pattern => pattern.test(aiResponse));
-    
-    if (containsInappropriate) {
-      console.warn('🚨 SAFETY ALERT: AI generated inappropriate content:', aiResponse.substring(0, 200));
-      
-      // Truncate at the start of inappropriate content
-      for (const pattern of inappropriatePatterns) {
-        const match = aiResponse.match(pattern);
-        if (match && match.index !== undefined) {
-          aiResponse = aiResponse.substring(0, match.index).trim();
-          
-          // Add completion if response is now too short
-          if (aiResponse.length < 20) {
-            aiResponse = "Perfetto! Procedo con il capitolato.";
-            aiResponse += '\n<!--INTERVIEW_COMPLETE:{"status":"force_completed","reason":"inappropriate_content"}-->';
-          }
-          break;
-        }
-      }
-    }
-    
-    // Additional safety: Only truncate extremely long responses (>500 chars)
-    if (aiResponse.length > 500 && !aiResponse.includes('<!--INTERVIEW_COMPLETE:')) {
-      console.warn('🚨 SAFETY ALERT: Response too long, truncating:', aiResponse.length);
-      // Find the last complete sentence before 450 chars
-      const truncateAt = aiResponse.lastIndexOf('.', 450);
-      if (truncateAt > 200) {
-        aiResponse = aiResponse.substring(0, truncateAt + 1).trim();
-      } else {
-        aiResponse = aiResponse.substring(0, 450).trim() + '...';
-      }
+    if (shouldForceComplete) {
+      console.warn('⚠️  Response too detailed, forcing completion');
+      aiResponse = "Perfetto! Ho tutte le informazioni. Procedo con il capitolato.";
+      aiResponse += '\n<!--INTERVIEW_COMPLETE:{"status":"force_completed","reason":"safety_trigger"}-->';
     }
 
     console.log('Processed AI response:', aiResponse);
@@ -266,12 +205,24 @@ IMPORTANTE: Scope del progetto:
             conversationalResponse = "Perfetto! Procedo con il capitolato.";
           }
           
+          // Extract scope info from interview data
+          const isPartialRenovation = 
+            interviewData.scope === 'parziale' || 
+            interviewData.scope === 'partial' ||
+            (interviewData.ambiente && interviewData.ambiente !== 'intera casa');
+          
+          const targetRooms = isPartialRenovation && interviewData.ambiente 
+            ? [interviewData.ambiente]
+            : null;
+          
           // Update lead with scope data
           const { error } = await supabase
             .from('leads')
             .update({ 
               scope_json: interviewData,
-              status: 'interview_completed'
+              status: 'interview_completed',
+              renovation_scope: isPartialRenovation ? 'partial' : 'full',
+              target_rooms: targetRooms
             })
             .eq('id', leadId);
 
