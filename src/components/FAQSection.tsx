@@ -39,7 +39,7 @@ const FAQSection = () => {
   ];
 
   return (
-    <section className="py-24 bg-gradient-subtle">
+    <section className="py-24 bg-secondary/30">
       <div className="container">
         <div className="text-center mb-20">
           <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
@@ -53,13 +53,13 @@ const FAQSection = () => {
 
         <div className="max-w-4xl mx-auto space-y-4">
           {faqs.map((faq, index) => (
-            <Card key={index} className="overflow-hidden shadow-card hover:shadow-elegant transition-smooth border-none bg-card/50 backdrop-blur-sm">
+            <Card key={index} className="overflow-hidden">
               <button
-                className="w-full p-6 text-left flex items-center justify-between hover:bg-accent/5 transition-smooth group"
+                className="w-full p-6 text-left flex items-center justify-between hover:bg-secondary/50 transition-smooth group"
                 onClick={() => setOpenIndex(openIndex === index ? null : index)}
               >
                 <div className="flex items-center gap-4 flex-1">
-                  <div className="flex-shrink-0 w-10 h-10 bg-gradient-accent rounded-lg flex items-center justify-center group-hover:scale-110 transition-smooth">
+                  <div className="flex-shrink-0 w-10 h-10 bg-accent rounded-lg flex items-center justify-center group-hover:scale-105 transition-smooth">
                     <faq.icon className="h-5 w-5 text-white" />
                   </div>
                   <h3 className="text-lg font-semibold text-foreground group-hover:text-primary transition-smooth">
@@ -88,8 +88,8 @@ const FAQSection = () => {
 
         {/* CTA */}
         <div className="text-center mt-16">
-          <div className="inline-flex items-center gap-4 bg-primary/5 rounded-2xl p-6 border border-primary/10">
-            <div className="w-12 h-12 bg-gradient-primary rounded-full flex items-center justify-center">
+          <div className="inline-flex items-center gap-4 bg-primary/5 rounded-lg p-6 border border-border shadow-sm">
+            <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center">
               <HelpCircle className="h-6 w-6 text-white" />
             </div>
             <div className="text-left">

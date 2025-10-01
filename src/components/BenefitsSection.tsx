@@ -46,17 +46,17 @@ const BenefitsSection = () => {
           </p>
         </div>
         
-        <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
+        <div className="grid md:grid-cols-2 gap-8">
           {benefits.map((benefit, index) => (
-            <Card key={index} className="group p-8 shadow-card hover:shadow-elegant transition-smooth border-none bg-card/50 backdrop-blur-sm hover:scale-105">
+            <Card key={index} className="group p-8 hover:scale-105">
               <div className="flex items-start space-x-6">
-                <div className="relative flex-shrink-0">
-                  <div className="bg-gradient-accent rounded-2xl p-4 group-hover:scale-110 transition-smooth shadow-lg">
+                <div className="flex-shrink-0">
+                  <div className="bg-accent rounded-lg p-4 group-hover:scale-110 transition-smooth">
                     <benefit.icon className="h-8 w-8 text-white" />
                   </div>
                 </div>
                 
-                <div className="flex-1 space-y-4">
+                <div className="flex-1 space-y-3">
                   <div>
                     <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-primary transition-smooth">
                       {benefit.title}

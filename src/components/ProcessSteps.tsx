@@ -34,7 +34,7 @@ const ProcessSteps = () => {
   ];
 
   return (
-    <section id="come-funziona" className="py-24 bg-gradient-subtle">
+    <section id="come-funziona" className="py-24 bg-secondary/30">
       <div className="container">
         <div className="text-center mb-20">
           <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
@@ -44,24 +44,24 @@ const ProcessSteps = () => {
         
         <div className="relative">
           {/* Progress line */}
-          <div className="hidden lg:block absolute top-24 left-1/2 transform -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-accent via-primary to-accent opacity-30"></div>
+          <div className="hidden lg:block absolute top-24 left-1/2 transform -translate-x-1/2 w-3/4 h-px bg-border"></div>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
             {steps.map((step, index) => (
               <div key={index} className="relative">
-                <Card className="p-8 text-center shadow-card hover:shadow-elegant transition-smooth border-none bg-card/50 backdrop-blur-sm group hover:scale-105">
+                <Card className="p-8 text-center group hover:scale-105">
                   {/* Step number */}
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-8 h-8 bg-gradient-primary rounded-full flex items-center justify-center text-primary-foreground font-bold text-sm shadow-lg">
+                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground font-bold text-sm shadow-md">
                     {index + 1}
                   </div>
                   
-                  <div className={`bg-gradient-${step.color} rounded-2xl w-20 h-20 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-smooth shadow-lg`}>
-                    <step.icon className="h-10 w-10 text-white" />
+                  <div className={`${step.color === 'accent' ? 'bg-accent' : 'bg-primary'} rounded-lg w-16 h-16 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-smooth`}>
+                    <step.icon className="h-8 w-8 text-white" />
                   </div>
                   
                   <div className="space-y-4">
                     <div>
-                      <h3 className="text-xl font-bold text-foreground mb-2">
+                      <h3 className="text-lg font-bold text-foreground mb-2">
                         {step.title}
                       </h3>
                       <div className="inline-flex items-center gap-1 bg-accent/10 text-accent font-medium px-3 py-1 rounded-full text-sm">
@@ -69,7 +69,7 @@ const ProcessSteps = () => {
                       </div>
                     </div>
                     
-                    <p className="text-muted-foreground leading-relaxed">
+                    <p className="text-muted-foreground leading-relaxed text-sm">
                       {step.description}
                     </p>
                   </div>
