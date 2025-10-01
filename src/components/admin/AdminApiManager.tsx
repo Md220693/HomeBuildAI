@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Eye, EyeOff, Key, RefreshCw, AlertTriangle, CheckCircle } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Eye, EyeOff, Key, RefreshCw, AlertTriangle, CheckCircle, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -21,49 +22,89 @@ const AdminApiManager = () => {
   const [showValues, setShowValues] = useState<{[key: string]: boolean}>({});
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [newValues, setNewValues] = useState<{[key: string]: string}>({});
+  const [otpDebugMode, setOtpDebugMode] = useState(false);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const defaultApiKeys = [
+  const apiKeyDefinitions = [
     {
       name: 'OPENAI_API_KEY',
-      value: '••••••••••••••••••••••••••••••••••••••••',
-      status: 'active' as const,
       description: 'OpenAI API per AI Interview e generazione contenuti',
-      lastUsed: '2 ore fa'
     },
     {
-      name: 'DEEPSEEK_API_KEY', 
-      value: '••••••••••••••••••••••••••••••••••••••••',
-      status: 'active' as const,
+      name: 'DEEPSEEK_API_KEY',
       description: 'DeepSeek API per analisi avanzate',
-      lastUsed: '1 giorno fa'
     },
     {
-      name: 'RESEND_API_KEY',
-      value: '',
-      status: 'inactive' as const,
-      description: 'Resend per invio email automatiche',
-      lastUsed: 'Mai'
+      name: 'postmark_api_key',
+      description: 'Postmark API per invio email ai fornitori',
+    },
+    {
+      name: 'postmark_server_token',
+      description: 'Postmark Server Token per autenticazione',
+    },
+    {
+      name: 'twilio_account_sid',
+      description: 'Twilio Account SID per invio SMS/OTP',
+    },
+    {
+      name: 'twilio_auth_token',
+      description: 'Twilio Auth Token per autenticazione SMS',
+    },
+    {
+      name: 'twilio_phone_number',
+      description: 'Numero di telefono Twilio per invio SMS',
     },
     {
       name: 'STRIPE_SECRET_KEY',
-      value: '',
-      status: 'inactive' as const,
       description: 'Stripe per pagamenti fornitori',
-      lastUsed: 'Mai'
-    },
-    {
-      name: 'TWILIO_AUTH_TOKEN',
-      value: '',
-      status: 'inactive' as const,
-      description: 'Twilio per chiamate vocali AI',
-      lastUsed: 'Mai'
     }
   ];
 
   useEffect(() => {
-    setApiKeys(defaultApiKeys);
+    loadSettings();
   }, []);
+
+  const loadSettings = async () => {
+    try {
+      setLoading(true);
+      
+      // Load all system settings from database
+      const { data: settings, error } = await supabase
+        .from('system_settings')
+        .select('*');
+
+      if (error) throw error;
+
+      // Load OTP debug mode
+      const debugModeSetting = settings?.find(s => s.setting_key === 'otp_debug_mode');
+      setOtpDebugMode(debugModeSetting?.setting_value === 'true');
+
+      // Map settings to API keys
+      const loadedKeys: ApiKey[] = apiKeyDefinitions.map(def => {
+        const setting = settings?.find(s => s.setting_key === def.name);
+        const hasValue = !!setting?.setting_value;
+        return {
+          name: def.name,
+          value: hasValue ? '••••••••••••••••••••••••••••••••••••••••' : '',
+          status: hasValue ? 'active' : 'inactive',
+          description: def.description,
+          lastUsed: setting?.updated_at ? new Date(setting.updated_at).toLocaleDateString('it-IT') : 'Mai'
+        } as ApiKey;
+      });
+
+      setApiKeys(loadedKeys);
+    } catch (error) {
+      console.error('Error loading settings:', error);
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: "Impossibile caricare le impostazioni"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const toggleShowValue = (keyName: string) => {
     setShowValues(prev => ({
@@ -93,8 +134,16 @@ const AdminApiManager = () => {
     }
 
     try {
-      // Here you would normally call your edge function to save the API key
-      // For now, we'll simulate the update
+      const { error } = await supabase.functions.invoke('save-api-settings', {
+        body: {
+          setting_key: keyName,
+          setting_value: newValue
+        }
+      });
+
+      if (error) throw error;
+
+      // Update local state
       setApiKeys(prev => prev.map(key => 
         key.name === keyName 
           ? { 
@@ -114,10 +163,39 @@ const AdminApiManager = () => {
         description: `${keyName} è stata salvata con successo`
       });
     } catch (error) {
+      console.error('Error saving API key:', error);
       toast({
         variant: "destructive",
         title: "Errore",
         description: "Impossibile salvare la chiave API"
+      });
+    }
+  };
+
+  const toggleOtpDebugMode = async (enabled: boolean) => {
+    try {
+      const { error } = await supabase.functions.invoke('save-api-settings', {
+        body: {
+          setting_key: 'otp_debug_mode',
+          setting_value: enabled ? 'true' : 'false'
+        }
+      });
+
+      if (error) throw error;
+
+      setOtpDebugMode(enabled);
+      toast({
+        title: "Modalità debug aggiornata",
+        description: enabled 
+          ? "Modalità debug OTP attivata - i codici verranno visualizzati nei log" 
+          : "Modalità debug OTP disattivata - SMS inviati normalmente"
+      });
+    } catch (error) {
+      console.error('Error toggling debug mode:', error);
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: "Impossibile aggiornare la modalità debug"
       });
     }
   };
@@ -128,35 +206,14 @@ const AdminApiManager = () => {
       description: `Verifica della connessione ${keyName}`
     });
 
-    // Simulate API test
+    // For now, just show a success message
+    // In production, you'd call a test endpoint
     setTimeout(() => {
-      const isSuccess = Math.random() > 0.3; // 70% success rate for demo
-      
-      if (isSuccess) {
-        setApiKeys(prev => prev.map(key => 
-          key.name === keyName 
-            ? { ...key, status: 'active' as const, lastUsed: 'Testato ora' }
-            : key
-        ));
-        
-        toast({
-          title: "Test riuscito",
-          description: `${keyName} funziona correttamente`
-        });
-      } else {
-        setApiKeys(prev => prev.map(key => 
-          key.name === keyName 
-            ? { ...key, status: 'error' as const }
-            : key
-        ));
-        
-        toast({
-          variant: "destructive",
-          title: "Test fallito",
-          description: `${keyName} non risponde correttamente`
-        });
-      }
-    }, 2000);
+      toast({
+        title: "Test simulato",
+        description: "Implementa un endpoint di test per verificare la connessione reale"
+      });
+    }, 1500);
   };
 
   const getStatusIcon = (status: string) => {
@@ -181,8 +238,43 @@ const AdminApiManager = () => {
     }
   };
 
+  if (loading) {
+    return <div className="p-8 text-center">Caricamento impostazioni...</div>;
+  }
+
   return (
     <div className="space-y-6">
+      {/* System Settings Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            Impostazioni Sistema
+          </CardTitle>
+          <CardDescription>
+            Configurazioni generali dell'applicazione
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between p-4 border rounded-lg">
+            <div className="space-y-1">
+              <Label htmlFor="otp-debug" className="text-base font-medium">
+                Modalità Debug OTP
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Quando attiva, i codici OTP vengono visualizzati nei log invece di essere inviati via SMS
+              </p>
+            </div>
+            <Switch
+              id="otp-debug"
+              checked={otpDebugMode}
+              onCheckedChange={toggleOtpDebugMode}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* API Keys Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -190,7 +282,7 @@ const AdminApiManager = () => {
             Gestione Chiavi API
           </CardTitle>
           <CardDescription>
-            Configura e gestisci tutte le chiavi API utilizzate dall'applicazione
+            Configura le chiavi API per servizi esterni (Postmark per email, Twilio per SMS, etc.)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
