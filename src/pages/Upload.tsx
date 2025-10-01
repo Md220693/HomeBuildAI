@@ -119,13 +119,14 @@ const Upload = () => {
         }
       }
 
-      // Create lead in database
+      // Create lead in database with skip_files flag
       const { data: lead, error } = await supabase
         .from('leads')
         .insert({
           status: 'new',
           planimetria_url: planimetriaUrl,
-          foto_urls: fotoUrls.length > 0 ? fotoUrls : null
+          foto_urls: fotoUrls.length > 0 ? fotoUrls : null,
+          skip_files: skipFiles
         })
         .select()
         .single();

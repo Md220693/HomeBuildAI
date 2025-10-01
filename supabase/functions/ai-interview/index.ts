@@ -29,10 +29,10 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get lead data to check for existing files
+    // Get lead data to check for existing files and skip flag
     const { data: leadData, error: leadError } = await supabase
       .from('leads')
-      .select('planimetria_url, foto_urls')
+      .select('planimetria_url, foto_urls, skip_files')
       .eq('id', leadId)
       .single();
 
@@ -41,7 +41,15 @@ serve(async (req) => {
       throw new Error('Failed to fetch lead data');
     }
 
-    console.log('Lead file data:', leadData);
+    const hasSkippedFiles = leadData?.skip_files === true;
+    const hasPlanimetria = leadData?.planimetria_url != null;
+    const hasFoto = leadData?.foto_urls != null && leadData.foto_urls.length >= 4;
+
+    console.log('Lead file data:', { 
+      planimetria_url: leadData?.planimetria_url, 
+      foto_urls: leadData?.foto_urls,
+      skip_files: hasSkippedFiles
+    });
 
     // Get system interview prompt from database
     const { data: promptData, error: promptError } = await supabase
@@ -51,21 +59,31 @@ serve(async (req) => {
       .eq('is_active', true)
       .single();
 
-    // Build file context information
-    const hasFiles = leadData?.planimetria_url || (leadData?.foto_urls && leadData.foto_urls.length > 0);
-    const fileContext = hasFiles ? `
-IMPORTANTE: IL CLIENTE HA GIÀ CARICATO I FILE NECESSARI:
-- Planimetria: ${leadData?.planimetria_url ? 'SÌ' : 'NO'}
-- Foto: ${leadData?.foto_urls ? `SÌ (${leadData.foto_urls.length} foto)` : 'NO'}
-
-NON CHIEDERE AL CLIENTE DI CARICARE NUOVAMENTE I FILE. Procedi direttamente con le domande dell'intervista.
-` : `
-ATTENZIONE: IL CLIENTE NON HA ANCORA CARICATO I FILE NECESSARI:
-- Planimetria: necessaria
-- Foto: necessarie (almeno 4)
-
-Chiedi al cliente di caricare questi file prima di procedere con l'intervista.
+    // Build file context information based on skip_files flag and uploaded files
+    let fileContext = '';
+    if (hasSkippedFiles) {
+      fileContext = `
+IMPORTANTE: L'utente ha scelto di procedere SENZA caricare foto o planimetria.
+- NON chiedere mai di caricare file durante l'intervista
+- Procedi direttamente con le domande per raccogliere tutte le informazioni necessarie
+- Fai domande più dettagliate per compensare la mancanza di documenti visivi
+- Chiedi specifiche su dimensioni, stato attuale, e dettagli degli ambienti da ristrutturare
 `;
+    } else if (hasPlanimetria || hasFoto) {
+      fileContext = `
+OTTIMO: L'utente ha caricato ${hasPlanimetria ? 'la planimetria' : ''}${hasPlanimetria && hasFoto ? ' e ' : ''}${hasFoto ? `${leadData.foto_urls.length} foto` : ''}.
+- Tieni in considerazione questi documenti durante l'intervista
+- Puoi fare riferimento ai file caricati quando appropriato
+- NON chiedere di caricare altri file
+`;
+    } else {
+      fileContext = `
+NOTA: L'utente non ha ancora caricato planimetria o foto.
+- Se l'utente le ha con sé, suggerisci gentilmente di caricarle per una valutazione più precisa
+- Se non le ha, procedi comunque con domande dettagliate
+- Non bloccare l'intervista per i file mancanti
+`;
+    }
 
     let systemPrompt;
     if (promptError || !promptData) {
@@ -106,10 +124,15 @@ POI aggiungi SOLO il tag:
 
 ${fileContext}
 
-IMPORTANTE: La PRIMA domanda dopo aver verificato i file deve SEMPRE essere sulla localizzazione:
-"Dove si trova l'immobile da ristrutturare? (Città, zona/quartiere e CAP se lo conosci)"
+IMPORTANTE: Domanda iniziale obbligatoria:
+- Chiedi sempre come PRIMA domanda: "Dove si trova l'immobile da ristrutturare? (Città, zona/quartiere e CAP se lo conosci)"
+- Non procedere finché non hai la localizzazione
 
-Non procedere con altre domande finché non hai ottenuto la localizzazione.`;
+IMPORTANTE: Scope del progetto:
+- Dopo la localizzazione, chiedi esplicitamente: "Vuoi ristrutturare l'intera casa o solo alcuni ambienti specifici?"
+- Se risponde "solo un ambiente" (es. solo bagno, solo cucina), adatta TUTTE le domande successive a quel singolo ambiente
+- Non fare domande su altri ambienti se il cliente vuole ristrutturare solo uno specifico
+- Per ristrutturazioni parziali, concentrati su: dimensioni dell'ambiente, stato attuale, lavori specifici richiesti, materiali desiderati`;
     }
 
     // Prepare messages for DeepSeek API

@@ -257,6 +257,7 @@ export type Database = {
           pdf_url: string | null
           planimetria_url: string | null
           scope_json: Json | null
+          skip_files: boolean | null
           status: string
           updated_at: string
           user_contact: Json | null
@@ -281,6 +282,7 @@ export type Database = {
           pdf_url?: string | null
           planimetria_url?: string | null
           scope_json?: Json | null
+          skip_files?: boolean | null
           status?: string
           updated_at?: string
           user_contact?: Json | null
@@ -305,6 +307,7 @@ export type Database = {
           pdf_url?: string | null
           planimetria_url?: string | null
           scope_json?: Json | null
+          skip_files?: boolean | null
           status?: string
           updated_at?: string
           user_contact?: Json | null

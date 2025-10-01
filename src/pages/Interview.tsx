@@ -82,7 +82,7 @@ const Interview = () => {
     setIsLoading(true);
     setShowForceComplete(false);
 
-    // Set timeout for responses longer than 30 seconds
+    // Set timeout for responses longer than 60 seconds
     const timeoutId = setTimeout(() => {
       console.warn('🚨 Response timeout reached');
       setShowForceComplete(true);
@@ -91,7 +91,7 @@ const Interview = () => {
         title: "Risposta lenta",
         description: "La risposta sta impiegando più tempo del previsto. Puoi forzare il completamento se necessario.",
       });
-    }, 30000);
+    }, 60000);
     
     setResponseTimeout(timeoutId);
 
@@ -115,24 +115,23 @@ const Interview = () => {
         setResponseTimeout(null);
       }
 
-      // FRONTEND SAFETY CHECK: Detect inappropriate content
-      const forbiddenKeywords = ['capitolato preliminare', 'stima di costo', '€', 'euro', 'prezzo', 'Range stimato'];
-      const responseContent = data.response?.toLowerCase() || '';
-      const containsForbidden = forbiddenKeywords.some(keyword => 
-        responseContent.includes(keyword.toLowerCase())
-      );
-
-      if (containsForbidden) {
-        console.warn('🚨 FRONTEND SAFETY: Detected inappropriate AI response');
+      // FRONTEND SAFETY CHECK: Only block truly inappropriate long responses
+      // Allow technical terms when used appropriately in interview context
+      const responseContent = data.response || '';
+      
+      // Only intervene if response is both long AND contains completion markers inappropriately
+      const isTooLong = responseContent.length > 1500;
+      const hasEarlyCompletion = responseContent.includes('<!--INTERVIEW_COMPLETE') && messages.length < 4;
+      
+      if (isTooLong && hasEarlyCompletion) {
+        console.warn('🚨 FRONTEND SAFETY: Detected premature completion in long response');
         
-        // Show warning and force completion
         toast({
           variant: "destructive",
           title: "Risposta inappropriata rilevata",
-          description: "L'AI ha generato contenuto non appropriato. Forziamo il completamento dell'intervista.",
+          description: "L'AI ha generato una risposta troppo lunga. Forziamo il completamento dell'intervista.",
         });
         
-        // Force completion
         await forceCompleteInterview();
         return;
       }
