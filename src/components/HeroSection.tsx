@@ -11,12 +11,15 @@ const HeroSection = () => {
       <div className="container">
         <div className="max-w-5xl mx-auto text-center">
           {/* Logo prominente nella hero */}
-          <div className="flex justify-center mb-8">
-            <img 
-              src={homeBuildAILogo} 
-              alt="HomeBuildAI - Il tuo alleato AI per ristrutturazioni" 
-              className="h-20 md:h-24 lg:h-28 w-auto object-contain drop-shadow-lg"
-            />
+          <div className="flex justify-center mb-12 animate-fade-in">
+            <div className="relative">
+              <div className="absolute inset-0 bg-accent/20 blur-3xl rounded-full"></div>
+              <img 
+                src={homeBuildAILogo} 
+                alt="HomeBuildAI - Il tuo alleato AI per ristrutturazioni" 
+                className="relative h-40 md:h-52 lg:h-64 w-auto object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-300"
+              />
+            </div>
           </div>
           
           {/* Trust badge */}

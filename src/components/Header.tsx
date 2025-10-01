@@ -6,13 +6,13 @@ const Header = () => {
   const navigate = useNavigate();
 
   return (
-    <header className="bg-background border-b border-border sticky top-0 z-50 shadow-sm">
-      <div className="container mx-auto px-6 py-5 md:py-6 lg:py-7 flex items-center justify-between">
+    <header className="bg-background border-b border-border sticky top-0 z-50 shadow-lg">
+      <div className="container mx-auto px-6 py-6 md:py-8 lg:py-10 flex items-center justify-between">
         <div className="cursor-pointer group" onClick={() => navigate('/')}>
           <img 
             src={homeBuildAILogo} 
             alt="HomeBuildAI - Il tuo alleato AI per ristrutturazioni" 
-            className="h-20 md:h-22 lg:h-24 w-auto object-contain transition-smooth group-hover:opacity-80 drop-shadow-md"
+            className="h-28 md:h-36 lg:h-40 w-auto object-contain transition-all duration-300 group-hover:scale-105 group-hover:opacity-90 drop-shadow-2xl"
           />
         </div>
         
