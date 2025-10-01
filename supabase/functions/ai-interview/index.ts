@@ -127,11 +127,10 @@ serve(async (req) => {
 - Tono amichevole e conversazionale
 - NON generare preventivi
 
-✅ QUANDO HAI TUTTE LE INFO, SCRIVI:
-"Perfetto! Ho tutte le informazioni necessarie. Ora genererò il capitolato tecnico."
+✅ QUANDO HAI TUTTE LE INFO, SCRIVI ESATTAMENTE QUESTO:
+"Perfetto! Ho tutte le informazioni necessarie. Ora genererò il capitolato tecnico.<!--INTERVIEW_COMPLETE-->"
 
-POI AGGIUNGI QUESTO TAG ESATTO:
-<!--INTERVIEW_COMPLETE-->
+IMPORTANTE: Il tag <!--INTERVIEW_COMPLETE--> deve essere SUBITO dopo la frase, senza andare a capo.
 
 ${fileContext}
 
@@ -230,15 +229,23 @@ ${scopeContext}`;
       }
     } else if (conversationText.includes('tutta la casa') || 
                conversationText.includes('casa completa') ||
-               conversationText.includes('intero appartamento')) {
+               conversationText.includes('intero appartamento') ||
+               conversationText.includes('tutto') ||
+               conversationText.includes("tutto l'immobile") ||
+               conversationText.includes("tutto l'appartamento") ||
+               conversationText.includes('completamente') ||
+               conversationText.includes('completa')) {
       detectedRenovationScope = 'full';
       console.log('🏠 Detected FULL renovation scope');
     }
 
     console.log('Final scope analysis:', { detectedRenovationScope, detectedTargetRooms, isMicroIntervention });
 
-    // If interview is complete OR AI says it has all info, save and complete
-    if (isComplete || (detectedRenovationScope !== 'unknown' && conversationText.includes('tutte le informazioni'))) {
+    // FASE 2: Auto-complete if AI says it has all info OR scope is detected with confirmation phrase
+    const hasCompletionPhrase = conversationText.includes('tutte le informazioni') || 
+                                 conversationText.includes('ho tutte le informazioni');
+    
+    if (isComplete || (detectedRenovationScope !== 'unknown' && hasCompletionPhrase)) {
       console.log('💾 Saving interview completion data...');
       
       const interviewData = {
