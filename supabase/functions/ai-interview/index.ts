@@ -172,8 +172,13 @@ ${scopeContext}`;
 
     console.log('Raw DeepSeek response:', aiResponse);
     
+    // FIX FASE 4: Handle empty or invalid AI responses
+    if (!aiResponse || aiResponse.trim() === '') {
+      console.error('❌ AI returned empty response, using fallback');
+      aiResponse = "Mi scusi, ho avuto un problema tecnico. Per favore, può ripetere la sua ultima risposta?";
+    }
+    
     // MINIMAL SAFETY CHECK: Only prevent extreme inappropriate responses
-    // Allow all technical construction terms
     const shouldForceComplete = 
       aiResponse.length > 1000 && 
       /preventivo\s+vincolante|€\s*\d+[\d.,]*\s*-\s*€\s*\d+[\d.,]*/.test(aiResponse);
@@ -238,15 +243,42 @@ ${scopeContext}`;
             conversationalResponse = "Perfetto! Procedo con il capitolato.";
           }
           
-          // Extract scope info from interview data
-          const isPartialRenovation = 
+          // FIX FASE 1: Enhanced scope detection with conversation analysis
+          let isPartialRenovation = 
             interviewData.scope === 'parziale' || 
             interviewData.scope === 'partial' ||
             (interviewData.ambiente && interviewData.ambiente !== 'intera casa');
           
-          const targetRooms = isPartialRenovation && interviewData.ambiente 
+          let targetRooms = isPartialRenovation && interviewData.ambiente 
             ? [interviewData.ambiente]
             : null;
+          
+          // FALLBACK: Analyze conversation to detect partial scope
+          if (!isPartialRenovation) {
+            const conversationText = messages.map(m => m.content).join(' ').toLowerCase();
+            
+            // Keywords indicating partial/single-room renovation
+            const partialKeywords = [
+              'solo bagno', 'solo cucina', 'solo camera', 'solo soggiorno',
+              'un bagno', 'una stanza', 'solo intonaco', 'solo pittura',
+              'singolo ambiente', 'un ambiente', 'ristrutturare il bagno',
+              'ristrutturare la cucina', 'rifare il soffitto'
+            ];
+            
+            const hasPartialKeywords = partialKeywords.some(kw => conversationText.includes(kw));
+            
+            if (hasPartialKeywords) {
+              console.log('🔍 Partial scope detected via conversation analysis');
+              isPartialRenovation = true;
+              
+              // Try to extract room name
+              const roomMatch = conversationText.match(/(bagno|cucina|camera|soggiorno|salone|studio)/);
+              if (roomMatch) {
+                targetRooms = [roomMatch[1]];
+                console.log('🎯 Target room identified:', targetRooms);
+              }
+            }
+          }
           
           // Update lead with scope data
           const { error } = await supabase

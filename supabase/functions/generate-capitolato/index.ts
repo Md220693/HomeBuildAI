@@ -48,12 +48,43 @@ serve(async (req) => {
       throw new Error('Lead data not found or incomplete');
     }
 
-    // Determine renovation scope for context
-    const isPartialRenovation = lead.renovation_scope === 'partial';
+    // FIX FASE 2: Enhanced scope detection and micro-intervention handling
+    let isPartialRenovation = lead.renovation_scope === 'partial';
     const targetRooms = lead.target_rooms || [];
     
+    // FALLBACK: Auto-detect partial from scope_json if renovation_scope is unknown
+    if (lead.renovation_scope === 'unknown' || !lead.renovation_scope) {
+      const scopeText = JSON.stringify(lead.scope_json).toLowerCase();
+      const partialIndicators = ['solo', 'bagno', 'cucina', 'intonaco', 'soffitto', 'pittura'];
+      const hasPartialIndicators = partialIndicators.some(ind => scopeText.includes(ind));
+      
+      if (hasPartialIndicators) {
+        console.log('🔍 Auto-detected partial renovation from scope_json');
+        isPartialRenovation = true;
+      }
+    }
+    
+    // Detect micro-interventions (very small jobs like "only plaster")
+    const scopeText = JSON.stringify(lead.scope_json).toLowerCase();
+    const isMicroIntervention = 
+      (scopeText.includes('solo intonaco') || 
+       scopeText.includes('solo pittura') ||
+       scopeText.includes('solo soffitto') ||
+       scopeText.includes('piccola riparazione')) &&
+      !scopeText.includes('completa') &&
+      !scopeText.includes('totale');
+    
     let scopeContext = '';
-    if (isPartialRenovation && targetRooms.length > 0) {
+    if (isMicroIntervention) {
+      scopeContext = `
+🎯 MICRO-INTERVENTO RILEVATO:
+- Lavoro estremamente limitato: ${targetRooms.length > 0 ? targetRooms.join(', ') : 'intervento specifico'}
+- CREA un capitolato MINIMALE con SOLO le voci necessarie
+- Stima realistica: 200-800€ per lavori tipo intonaco/pittura piccoli
+- NON generare tutte le 9 sezioni standard - solo quelle pertinenti
+- Esempio: per "solo intonaco soffitto" → solo sezioni "pitturazioni" e eventualmente "opere_accessorie"
+`;
+    } else if (isPartialRenovation && targetRooms.length > 0) {
       scopeContext = `
 IMPORTANTE - RISTRUTTURAZIONE PARZIALE:
 - L'utente vuole ristrutturare SOLO: ${targetRooms.join(', ')}

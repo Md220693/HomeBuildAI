@@ -210,10 +210,11 @@ const Capitolato = () => {
     }).format(amount);
   };
 
-  const getAccuracyColor = (accuracy: number) => {
-    if (accuracy >= 0.8) return 'text-green-600 bg-green-100';
-    if (accuracy >= 0.7) return 'text-blue-600 bg-blue-100';
-    return 'text-yellow-600 bg-yellow-100';
+  // FIX FASE 3: Use Badge variants instead of direct color classes
+  const getAccuracyVariant = (accuracy: number): "default" | "secondary" | "destructive" | "outline" => {
+    if (accuracy >= 0.8) return 'default'; // Uses primary color
+    if (accuracy >= 0.7) return 'secondary';
+    return 'outline';
   };
 
   const sectionTitles = {
@@ -308,7 +309,7 @@ const Capitolato = () => {
                     <div>
                       <TrendingUp className="h-8 w-8 mx-auto mb-2 text-accent-foreground" />
                       <h3 className="text-lg font-semibold text-accent-foreground mb-1">Accuratezza</h3>
-                      <Badge className="text-sm px-3 py-1 text-blue-600 bg-blue-100">
+                      <Badge variant="secondary" className="text-sm px-3 py-1">
                         75% accuratezza
                       </Badge>
                     </div>
@@ -406,7 +407,7 @@ const Capitolato = () => {
                 <div>
                   <TrendingUp className="h-8 w-8 mx-auto mb-2 text-accent-foreground" />
                   <h3 className="text-lg font-semibold text-accent-foreground mb-1">Accuratezza</h3>
-                  <Badge className={`text-sm px-3 py-1 ${getAccuracyColor(leadData.confidence)}`}>
+                  <Badge variant={getAccuracyVariant(leadData.confidence)} className="text-sm px-3 py-1">
                     {Math.round(leadData.confidence * 100)}% accuratezza
                   </Badge>
                 </div>
