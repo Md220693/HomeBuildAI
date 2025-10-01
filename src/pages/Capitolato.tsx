@@ -213,8 +213,8 @@ const Capitolato = () => {
   // Get Badge variant for accuracy (uses semantic design tokens)
   const getAccuracyVariant = (accuracy: number): "default" | "secondary" | "outline" => {
     if (accuracy >= 0.8) return 'default';
-    if (accuracy >= 0.7) return 'secondary';
-    return 'outline'; // Better readability than destructive
+    if (accuracy >= 0.6) return 'default'; // Use primary teal for 60%+ accuracy
+    return 'outline'; // Better readability for lower accuracy
   };
 
   const sectionTitles = {
