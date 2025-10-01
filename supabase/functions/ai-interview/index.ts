@@ -198,8 +198,8 @@ ${scopeContext}`;
 
     // ALWAYS analyze conversation for scope detection (not just when complete)
     const conversationText = messages.map((m: any) => m.content).join(' ').toLowerCase();
-    let renovationScope = 'unknown';
-    let targetRooms: string[] = [];
+    let detectedRenovationScope = 'unknown';
+    let detectedTargetRooms: string[] = [];
     let isMicroIntervention = false;
 
     // Detect partial scope from keywords
@@ -212,13 +212,13 @@ ${scopeContext}`;
     const hasPartialKeywords = partialKeywords.some(kw => conversationText.includes(kw));
     
     if (hasPartialKeywords) {
-      renovationScope = 'partial';
+      detectedRenovationScope = 'partial';
       console.log('🔍 Detected PARTIAL scope from conversation');
       
       // Extract room
-      if (conversationText.includes('bagno')) targetRooms.push('bagno');
-      if (conversationText.includes('cucina')) targetRooms.push('cucina');
-      if (conversationText.includes('camera')) targetRooms.push('camera');
+      if (conversationText.includes('bagno')) detectedTargetRooms.push('bagno');
+      if (conversationText.includes('cucina')) detectedTargetRooms.push('cucina');
+      if (conversationText.includes('camera')) detectedTargetRooms.push('camera');
       
       // Detect micro-intervention (very small job)
       if (conversationText.includes('solo intonaco') || 
@@ -231,20 +231,20 @@ ${scopeContext}`;
     } else if (conversationText.includes('tutta la casa') || 
                conversationText.includes('casa completa') ||
                conversationText.includes('intero appartamento')) {
-      renovationScope = 'full';
+      detectedRenovationScope = 'full';
       console.log('🏠 Detected FULL renovation scope');
     }
 
-    console.log('Final scope analysis:', { renovationScope, targetRooms, isMicroIntervention });
+    console.log('Final scope analysis:', { detectedRenovationScope, detectedTargetRooms, isMicroIntervention });
 
     // If interview is complete OR AI says it has all info, save and complete
-    if (isComplete || (renovationScope !== 'unknown' && conversationText.includes('tutte le informazioni'))) {
+    if (isComplete || (detectedRenovationScope !== 'unknown' && conversationText.includes('tutte le informazioni'))) {
       console.log('💾 Saving interview completion data...');
       
       const interviewData = {
         status: 'completed',
-        detected_scope: renovationScope,
-        target_rooms: targetRooms,
+        detected_scope: detectedRenovationScope,
+        target_rooms: detectedTargetRooms,
         is_micro_intervention: isMicroIntervention,
         timestamp: new Date().toISOString(),
         conversation_summary: conversationText.substring(0, 500)
@@ -262,8 +262,8 @@ ${scopeContext}`;
         .from('leads')
         .update({
           status: 'interview_completed',
-          renovation_scope: renovationScope,
-          target_rooms: targetRooms.length > 0 ? targetRooms : null,
+          renovation_scope: detectedRenovationScope,
+          target_rooms: detectedTargetRooms.length > 0 ? detectedTargetRooms : null,
           scope_json: interviewData
         })
         .eq('id', leadId);
@@ -271,7 +271,7 @@ ${scopeContext}`;
       if (updateError) {
         console.error('❌ Failed to update lead:', updateError);
       } else {
-        console.log('✅ Lead updated successfully:', { renovationScope, targetRooms, isMicroIntervention });
+        console.log('✅ Lead updated successfully:', { detectedRenovationScope, detectedTargetRooms, isMicroIntervention });
       }
 
       return new Response(JSON.stringify({ 
@@ -283,10 +283,10 @@ ${scopeContext}`;
       });
     }
 
+    // If not complete, return response without completion
     return new Response(JSON.stringify({ 
-      response: conversationalResponse,
-      interview_complete: !!interviewData,
-      collected_data: interviewData
+      response: aiResponse,
+      interview_complete: false
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
