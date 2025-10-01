@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Home, Zap, Target, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import homeBuildAILogo from "@/assets/homebuildai-new-logo.png";
 
 const HeroSection = () => {
   const navigate = useNavigate();
@@ -9,6 +10,15 @@ const HeroSection = () => {
     <section className="bg-background py-20 md:py-32">
       <div className="container">
         <div className="max-w-5xl mx-auto text-center">
+          {/* Logo prominente nella hero */}
+          <div className="flex justify-center mb-8">
+            <img 
+              src={homeBuildAILogo} 
+              alt="HomeBuildAI - Il tuo alleato AI per ristrutturazioni" 
+              className="h-20 md:h-24 lg:h-28 w-auto object-contain drop-shadow-lg"
+            />
+          </div>
+          
           {/* Trust badge */}
           <div className="inline-flex items-center gap-2 bg-accent/10 rounded-full px-4 py-2 mb-6 text-sm font-medium text-accent">
             <CheckCircle className="w-4 h-4" />
