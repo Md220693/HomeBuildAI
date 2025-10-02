@@ -23,6 +23,7 @@ const AdminApiManager = () => {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [newValues, setNewValues] = useState<{[key: string]: string}>({});
   const [otpDebugMode, setOtpDebugMode] = useState(false);
+  const [supplierEmailConfirmRequired, setSupplierEmailConfirmRequired] = useState(false);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -91,6 +92,10 @@ const AdminApiManager = () => {
       // Load OTP debug mode
       const debugModeSetting = settings?.find(s => s.setting_key === 'otp_debug_mode');
       setOtpDebugMode(debugModeSetting?.setting_value === 'true');
+
+      // Load supplier email confirmation setting
+      const supplierEmailSetting = settings?.find(s => s.setting_key === 'supplier_email_confirmation_required');
+      setSupplierEmailConfirmRequired(supplierEmailSetting?.setting_value === 'true');
 
       // Map settings to API keys (solo chiavi managed)
       const loadedKeys: ApiKey[] = managedApiKeyDefinitions.map(def => {
@@ -212,6 +217,34 @@ const AdminApiManager = () => {
     }
   };
 
+  const toggleSupplierEmailConfirm = async (enabled: boolean) => {
+    try {
+      const { error } = await supabase.functions.invoke('save-api-settings', {
+        body: {
+          setting_key: 'supplier_email_confirmation_required',
+          setting_value: enabled ? 'true' : 'false'
+        }
+      });
+
+      if (error) throw error;
+
+      setSupplierEmailConfirmRequired(enabled);
+      toast({
+        title: "Impostazione aggiornata",
+        description: enabled 
+          ? "Conferma email richiesta per i fornitori" 
+          : "I fornitori possono accedere immediatamente dopo la registrazione"
+      });
+    } catch (error) {
+      console.error('Error toggling supplier email confirm:', error);
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: "Impossibile aggiornare l'impostazione"
+      });
+    }
+  };
+
   const testApiKey = async (keyName: string) => {
     toast({
       title: "Test in corso...",
@@ -281,6 +314,22 @@ const AdminApiManager = () => {
               id="otp-debug"
               checked={otpDebugMode}
               onCheckedChange={toggleOtpDebugMode}
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-4 border rounded-lg">
+            <div className="space-y-1">
+              <Label htmlFor="supplier-email-confirm" className="text-base font-medium">
+                Richiedi Conferma Email Fornitori
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Se attiva, i fornitori devono confermare l'email prima di accedere al sistema
+              </p>
+            </div>
+            <Switch
+              id="supplier-email-confirm"
+              checked={supplierEmailConfirmRequired}
+              onCheckedChange={toggleSupplierEmailConfirm}
             />
           </div>
         </CardContent>

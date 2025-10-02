@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,10 +20,29 @@ const SupplierAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [emailConfirmRequired, setEmailConfirmRequired] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectTo = searchParams.get('redirect') || '/fornitori/dashboard';
+
+  useEffect(() => {
+    const checkEmailConfirmSetting = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('get-system-setting', {
+          body: { setting_key: 'supplier_email_confirmation_required' }
+        });
+        
+        if (!error && data?.success) {
+          setEmailConfirmRequired(data.setting_value === 'true');
+        }
+      } catch (error) {
+        console.error('Error fetching email confirmation setting:', error);
+      }
+    };
+
+    checkEmailConfirmSetting();
+  }, []);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +57,10 @@ const SupplierAuth = () => {
         email: validatedData.email,
         password: validatedData.password,
         options: {
-          emailRedirectTo: redirectUrl
+          emailRedirectTo: redirectUrl,
+          data: {
+            email_confirm_required: emailConfirmRequired
+          }
         }
       });
 
@@ -55,10 +77,17 @@ const SupplierAuth = () => {
         return;
       }
 
-      toast({
-        title: "Registrazione completata!",
-        description: "Controlla la tua email per confermare l'account, poi potrai accedere."
-      });
+      if (emailConfirmRequired) {
+        toast({
+          title: "Registrazione completata!",
+          description: "Controlla la tua email per confermare l'account, poi potrai accedere."
+        });
+      } else {
+        toast({
+          title: "Registrazione completata!",
+          description: "Puoi ora accedere con le tue credenziali."
+        });
+      }
 
     } catch (error) {
       console.error('Sign up error:', error);
