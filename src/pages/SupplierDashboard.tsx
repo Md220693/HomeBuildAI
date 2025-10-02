@@ -8,6 +8,7 @@ import { Building, User, Settings, LogOut, Loader2, AlertCircle, CheckCircle, Ma
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { formatZonaOperativaDisplay } from "@/data/italianMunicipalities";
 
 interface SupplierProfile {
   id: string;
@@ -383,12 +384,20 @@ const SupplierDashboard = () => {
                 
                 <div>
                   <h4 className="font-semibold text-sm text-muted-foreground">ZONA OPERATIVA</h4>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {supplier.zona_operativa.map((zona, index) => (
-                      <Badge key={index} variant="secondary">
-                        {zona}
+                  <p className="font-medium text-sm mt-1">
+                    {formatZonaOperativaDisplay(supplier.zona_operativa)}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {supplier.zona_operativa.slice(0, 10).map((zona, index) => (
+                      <Badge key={index} variant="outline" className="text-xs">
+                        {zona.replace('REG:', '').replace('PROV:', 'Prov. ').replace('COM:', '')}
                       </Badge>
                     ))}
+                    {supplier.zona_operativa.length > 10 && (
+                      <Badge variant="outline" className="text-xs">
+                        +{supplier.zona_operativa.length - 10} altre
+                      </Badge>
+                    )}
                   </div>
                 </div>
 

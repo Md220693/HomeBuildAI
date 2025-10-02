@@ -1,117 +1,129 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Building, User, Mail, Phone, Globe, MapPin, Loader2, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { Loader2, Building2 } from "lucide-react";
 import { z } from "zod";
+import { GeographicSelector } from "@/components/supplier/GeographicSelector";
+import { SupplierInfoSidebar } from "@/components/supplier/SupplierInfoSidebar";
 
 const onboardingSchema = z.object({
-  ragioneSociale: z.string().min(2, "Ragione sociale è obbligatoria"),
-  partitaIva: z.string().regex(/^[0-9]{11}$/, "P.IVA deve essere di 11 cifre"),
-  sitoWeb: z.string().url("URL non valido").optional().or(z.literal("")),
-  contattoReferente: z.string().min(2, "Nome referente è obbligatorio"),
+  ragione_sociale: z.string().min(2, "Ragione sociale richiesta"),
+  partita_iva: z.string().regex(/^\d{11}$/, "P.IVA deve essere di 11 cifre"),
+  sito_web: z.string().url("URL non valido").optional().or(z.literal("")),
+  contatto_referente: z.string().min(2, "Nome referente richiesto"),
   email: z.string().email("Email non valida"),
   telefono: z.string().min(10, "Numero di telefono non valido"),
-  zonaOperativa: z.string().min(5, "Indica almeno una zona operativa"),
-  codiceCondotta: z.boolean().refine(val => val === true, "Devi accettare il codice di condotta")
+  zona_operativa: z.array(z.string()).min(1, "Seleziona almeno una zona operativa"),
+  codice_condotta_accettato: z.boolean().refine((val) => val === true, "Devi accettare il codice di condotta")
 });
 
 const SupplierOnboarding = () => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    ragioneSociale: "",
-    partitaIva: "",
-    sitoWeb: "",
-    contattoReferente: "",
-    email: "",
-    telefono: "",
-    zonaOperativa: "",
-    codiceCondotta: false
-  });
-  
+  const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user } = useAuth();
 
-  if (!user) {
-    navigate('/fornitori/auth');
-    return null;
-  }
+  const [formData, setFormData] = useState({
+    ragione_sociale: "",
+    partita_iva: "",
+    sito_web: "",
+    contatto_referente: "",
+    email: "",
+    telefono: "",
+    zona_operativa: [] as string[],
+    codice_condotta_accettato: false,
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleInputChange = (field: string, value: string | boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: "" }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    setErrors({});
+    setIsLoading(true);
+
     try {
       const validatedData = onboardingSchema.parse(formData);
-      setIsLoading(true);
 
-      // Prepara i dati per il database
-      const supplierData = {
-        user_id: user.id,
-        ragione_sociale: validatedData.ragioneSociale,
-        partita_iva: validatedData.partitaIva,
-        sito_web: validatedData.sitoWeb || null,
-        contatto_referente: validatedData.contattoReferente,
-        email: validatedData.email,
-        telefono: validatedData.telefono,
-        zona_operativa: validatedData.zonaOperativa.split(',').map(z => z.trim()),
-        codice_condotta_accettato: validatedData.codiceCondotta,
-        onboarding_completato: true,
-        attivo: true
-      };
-
-      const { error } = await supabase
-        .from('suppliers')
-        .insert([supplierData]);
-
-      if (error) {
-        if (error.message.includes('duplicate')) {
-          toast({
-            variant: "destructive",
-            title: "Dati duplicati",
-            description: "P.IVA già registrata o profilo già esistente"
-          });
-        } else {
-          throw error;
-        }
+      if (!user) {
+        toast({
+          variant: "destructive",
+          title: "Errore",
+          description: "Devi essere autenticato per completare il profilo"
+        });
+        navigate('/fornitori/auth');
         return;
       }
 
+      const { error } = await supabase
+        .from('suppliers')
+        .insert({
+          user_id: user.id,
+          ragione_sociale: validatedData.ragione_sociale,
+          partita_iva: validatedData.partita_iva,
+          sito_web: validatedData.sito_web || null,
+          contatto_referente: validatedData.contatto_referente,
+          email: validatedData.email,
+          telefono: validatedData.telefono,
+          zona_operativa: validatedData.zona_operativa,
+          codice_condotta_accettato: validatedData.codice_condotta_accettato,
+          onboarding_completato: true
+        });
+
+      if (error) {
+        console.error('Supabase insert error:', error);
+        throw error;
+      }
+
       toast({
-        title: "Profilo creato con successo!",
-        description: "Il tuo account fornitore è ora attivo",
-        duration: 3000
+        title: "Profilo completato!",
+        description: "Benvenuto in HomeBuildAI. Verrai reindirizzato alla dashboard..."
       });
 
-      navigate('/fornitori/dashboard');
+      setTimeout(() => {
+        navigate('/fornitori/dashboard', { replace: true });
+        setTimeout(() => {
+          if (window.location.pathname !== '/fornitori/dashboard') {
+            window.location.href = '/fornitori/dashboard';
+          }
+        }, 100);
+      }, 500);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Onboarding error:', error);
+      
       if (error instanceof z.ZodError) {
+        const fieldErrors: Record<string, string> = {};
+        error.errors.forEach(err => {
+          if (err.path[0]) {
+            fieldErrors[err.path[0].toString()] = err.message;
+          }
+        });
+        setErrors(fieldErrors);
+        
         toast({
           variant: "destructive",
-          title: "Dati non validi",
-          description: error.errors[0]?.message
+          title: "Errori di validazione",
+          description: "Controlla i campi evidenziati"
         });
       } else {
         toast({
           variant: "destructive",
           title: "Errore nel salvataggio",
-          description: error instanceof Error ? error.message : "Riprova più tardi"
+          description: error.message || "Si è verificato un errore. Riprova."
         });
       }
     } finally {
@@ -120,189 +132,226 @@ const SupplierOnboarding = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-subtle p-6">
-      <div className="max-w-2xl mx-auto">
-        <Card className="shadow-elegant">
-          <CardHeader className="text-center">
-            <div className="mx-auto w-12 h-12 bg-primary rounded-full flex items-center justify-center mb-4">
-              <Building className="h-6 w-6 text-primary-foreground" />
+    <div className="min-h-screen bg-gradient-subtle">
+      {/* Header */}
+      <header className="bg-white border-b">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+              <Building2 className="h-5 w-5 text-primary-foreground" />
             </div>
-            <CardTitle className="text-2xl">Completa il tuo Profilo</CardTitle>
-            <CardDescription>
-              Inserisci i dati della tua azienda per attivare l'account fornitore
-            </CardDescription>
-          </CardHeader>
-          
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Dati Aziendali */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center">
-                  <Building className="mr-2 h-5 w-5 text-primary" />
-                  Dati Aziendali
-                </h3>
-                
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="ragioneSociale">Ragione Sociale *</Label>
-                    <Input
-                      id="ragioneSociale"
-                      value={formData.ragioneSociale}
-                      onChange={(e) => handleInputChange('ragioneSociale', e.target.value)}
-                      placeholder="Es. ABC Costruzioni S.r.l."
-                      required
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="partitaIva">Partita IVA *</Label>
-                    <Input
-                      id="partitaIva"
-                      value={formData.partitaIva}
-                      onChange={(e) => handleInputChange('partitaIva', e.target.value.replace(/\D/g, ''))}
-                      placeholder="12345678901"
-                      maxLength={11}
-                      required
-                    />
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="sitoWeb">Sito Web</Label>
-                  <div className="relative">
-                    <Globe className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="sitoWeb"
-                      type="url"
-                      value={formData.sitoWeb}
-                      onChange={(e) => handleInputChange('sitoWeb', e.target.value)}
-                      placeholder="https://www.tuaazienda.com"
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-              </div>
+            <div>
+              <h1 className="text-xl font-bold">HomeBuildAI</h1>
+              <p className="text-sm text-muted-foreground">Registrazione Fornitori</p>
+            </div>
+          </div>
+        </div>
+      </header>
 
-              {/* Contatto Referente */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center">
-                  <User className="mr-2 h-5 w-5 text-primary" />
-                  Contatto Referente
-                </h3>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="contattoReferente">Nome e Cognome *</Label>
-                  <Input
-                    id="contattoReferente"
-                    value={formData.contattoReferente}
-                    onChange={(e) => handleInputChange('contattoReferente', e.target.value)}
-                    placeholder="Mario Rossi"
-                    required
-                  />
-                </div>
-                
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email *</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+      {/* Main Content - Layout a 2 colonne */}
+      <div className="container mx-auto px-6 py-8">
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Colonna Sinistra - Form (2/3) */}
+          <div className="lg:col-span-2">
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-2xl">Completa il tuo Profilo</CardTitle>
+                <CardDescription>
+                  Inserisci i dati della tua azienda per iniziare a ricevere lead qualificati
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent className="pt-6">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  {/* Dati Aziendali */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold border-b pb-2">Dati Aziendali</h3>
+                    
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="ragione_sociale">Ragione Sociale *</Label>
+                        <Input
+                          id="ragione_sociale"
+                          name="ragione_sociale"
+                          value={formData.ragione_sociale}
+                          onChange={handleInputChange}
+                          className={errors.ragione_sociale ? "border-destructive" : ""}
+                          required
+                        />
+                        {errors.ragione_sociale && (
+                          <p className="text-sm text-destructive">{errors.ragione_sociale}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="partita_iva">Partita IVA *</Label>
+                        <Input
+                          id="partita_iva"
+                          name="partita_iva"
+                          value={formData.partita_iva}
+                          onChange={handleInputChange}
+                          maxLength={11}
+                          placeholder="12345678901"
+                          className={errors.partita_iva ? "border-destructive" : ""}
+                          required
+                        />
+                        {errors.partita_iva && (
+                          <p className="text-sm text-destructive">{errors.partita_iva}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="sito_web">Sito Web</Label>
                       <Input
-                        id="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => handleInputChange('email', e.target.value)}
-                        placeholder="mario@azienda.com"
-                        className="pl-10"
-                        required
+                        id="sito_web"
+                        name="sito_web"
+                        type="url"
+                        placeholder="https://www.tuosito.it"
+                        value={formData.sito_web}
+                        onChange={handleInputChange}
+                        className={errors.sito_web ? "border-destructive" : ""}
                       />
+                      {errors.sito_web && (
+                        <p className="text-sm text-destructive">{errors.sito_web}</p>
+                      )}
                     </div>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="telefono">Telefono *</Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+
+                  {/* Dati di Contatto */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold border-b pb-2">Dati di Contatto</h3>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="contatto_referente">Nome Referente *</Label>
                       <Input
-                        id="telefono"
-                        type="tel"
-                        value={formData.telefono}
-                        onChange={(e) => handleInputChange('telefono', e.target.value)}
-                        placeholder="+39 123 456 7890"
-                        className="pl-10"
+                        id="contatto_referente"
+                        name="contatto_referente"
+                        placeholder="Mario Rossi"
+                        value={formData.contatto_referente}
+                        onChange={handleInputChange}
+                        className={errors.contatto_referente ? "border-destructive" : ""}
                         required
                       />
+                      {errors.contatto_referente && (
+                        <p className="text-sm text-destructive">{errors.contatto_referente}</p>
+                      )}
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email *</Label>
+                        <Input
+                          id="email"
+                          name="email"
+                          type="email"
+                          placeholder="info@tuaazienda.it"
+                          value={formData.email}
+                          onChange={handleInputChange}
+                          className={errors.email ? "border-destructive" : ""}
+                          required
+                        />
+                        {errors.email && (
+                          <p className="text-sm text-destructive">{errors.email}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="telefono">Telefono *</Label>
+                        <Input
+                          id="telefono"
+                          name="telefono"
+                          type="tel"
+                          placeholder="+39 333 1234567"
+                          value={formData.telefono}
+                          onChange={handleInputChange}
+                          className={errors.telefono ? "border-destructive" : ""}
+                          required
+                        />
+                        {errors.telefono && (
+                          <p className="text-sm text-destructive">{errors.telefono}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Zona Operativa */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center">
-                  <MapPin className="mr-2 h-5 w-5 text-primary" />
-                  Zona Operativa
-                </h3>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="zonaOperativa">CAP/Province di Servizio *</Label>
-                  <Textarea
-                    id="zonaOperativa"
-                    value={formData.zonaOperativa}
-                    onChange={(e) => handleInputChange('zonaOperativa', e.target.value)}
-                    placeholder="Es. 20100, 20121, Milano, Monza-Brianza, Bergamo"
-                    rows={3}
-                    required
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Separa con virgole i CAP e/o le province dove operi
-                  </p>
-                </div>
-              </div>
-
-              {/* Accettazione */}
-              <div className="space-y-4">
-                <div className="flex items-start space-x-2">
-                  <Checkbox
-                    id="codiceCondotta"
-                    checked={formData.codiceCondotta}
-                    onCheckedChange={(checked) => handleInputChange('codiceCondotta', !!checked)}
-                  />
-                  <div className="grid gap-1.5 leading-none">
-                    <Label
-                      htmlFor="codiceCondotta"
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      Accetto il Codice di Condotta *
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Accetti di rispettare gli standard di qualità e professionalità richiesti
-                    </p>
+                  {/* Zona Operativa con nuovo selettore */}
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-lg font-semibold border-b pb-2 mb-4">Zona Operativa</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Seleziona le regioni, province o comuni dove la tua azienda opera. 
+                        Puoi selezionare intere regioni, province o singoli comuni.
+                      </p>
+                    </div>
+                    
+                    <GeographicSelector
+                      value={formData.zona_operativa}
+                      onChange={(value) => {
+                        setFormData(prev => ({ ...prev, zona_operativa: value }));
+                        if (errors.zona_operativa) {
+                          setErrors(prev => ({ ...prev, zona_operativa: "" }));
+                        }
+                      }}
+                      error={errors.zona_operativa}
+                    />
                   </div>
-                </div>
-              </div>
 
-              <Button 
-                type="submit" 
-                className="w-full" 
-                variant="hero" 
-                size="lg"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creazione profilo...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Completa Registrazione
-                  </>
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                  {/* Codice di Condotta */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold border-b pb-2">Codice di Condotta</h3>
+                    
+                    <div className="flex items-start space-x-3 p-4 border rounded-lg bg-muted/50">
+                      <Checkbox
+                        id="codice_condotta"
+                        checked={formData.codice_condotta_accettato}
+                        onCheckedChange={(checked) => {
+                          setFormData(prev => ({ ...prev, codice_condotta_accettato: checked === true }));
+                          if (errors.codice_condotta_accettato) {
+                            setErrors(prev => ({ ...prev, codice_condotta_accettato: "" }));
+                          }
+                        }}
+                        className={errors.codice_condotta_accettato ? "border-destructive" : ""}
+                        required
+                      />
+                      <div className="flex-1">
+                        <Label 
+                          htmlFor="codice_condotta" 
+                          className="text-sm leading-relaxed cursor-pointer"
+                        >
+                          Accetto il codice di condotta e mi impegno a fornire servizi di qualità, 
+                          rispettando i preventivi e le tempistiche concordate con i clienti. *
+                        </Label>
+                        {errors.codice_condotta_accettato && (
+                          <p className="text-sm text-destructive mt-1">{errors.codice_condotta_accettato}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    size="lg"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Salvataggio in corso...
+                      </>
+                    ) : (
+                      "Completa Registrazione e Vai alla Dashboard"
+                    )}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Colonna Destra - Sidebar Informativa (1/3) */}
+          <SupplierInfoSidebar />
+        </div>
       </div>
     </div>
   );
