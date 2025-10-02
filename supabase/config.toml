@@ -9,5 +9,8 @@ verify_jwt = false
 [functions.get-system-setting]
 verify_jwt = false
 
+[functions.signup-supplier]
+verify_jwt = false
+
 [functions.parse-regional-pricelist]
 verify_jwt = true

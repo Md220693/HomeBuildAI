@@ -51,33 +51,29 @@ const SupplierAuth = () => {
       const validatedData = authSchema.parse({ email, password });
       setIsLoading(true);
 
-      const redirectUrl = `${window.location.origin}/fornitori/dashboard`;
-      
-      const { error } = await supabase.auth.signUp({
-        email: validatedData.email,
-        password: validatedData.password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            email_confirm_required: emailConfirmRequired
-          }
+      const { data, error } = await supabase.functions.invoke('signup-supplier', {
+        body: { 
+          email: validatedData.email, 
+          password: validatedData.password 
         }
       });
 
-      if (error) {
-        if (error.message.includes('already registered')) {
+      if (error || !data?.success) {
+        const errorMessage = error?.message || data?.error || 'Errore sconosciuto';
+        
+        if (errorMessage.includes('already registered') || errorMessage.includes('User already registered')) {
           toast({
             variant: "destructive",
             title: "Account già esistente",
             description: "Questo indirizzo email è già registrato. Prova ad accedere."
           });
         } else {
-          throw error;
+          throw new Error(errorMessage);
         }
         return;
       }
 
-      if (emailConfirmRequired) {
+      if (data.email_confirm_required) {
         toast({
           title: "Registrazione completata!",
           description: "Controlla la tua email per confermare l'account, poi potrai accedere."
@@ -85,7 +81,7 @@ const SupplierAuth = () => {
       } else {
         toast({
           title: "Registrazione completata!",
-          description: "Puoi ora accedere con le tue credenziali."
+          description: "Account creato con successo. Puoi ora accedere con le tue credenziali."
         });
       }
 

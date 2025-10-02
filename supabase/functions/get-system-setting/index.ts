@@ -29,11 +29,23 @@ serve(async (req) => {
       .from('system_settings')
       .select('setting_value')
       .eq('setting_key', setting_key)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error fetching setting:', error);
       throw error;
+    }
+
+    if (!data) {
+      console.log(`Setting ${setting_key} not found, returning null`);
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          setting_key,
+          setting_value: null 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     return new Response(
