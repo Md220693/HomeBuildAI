@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 import Header from "@/components/Header";
+import { useAuth } from "@/hooks/useAuth";
 
 const authSchema = z.object({
   email: z.string().email("Email non valida"),
@@ -25,6 +26,31 @@ const SupplierAuth = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectTo = searchParams.get('redirect') || '/fornitori/dashboard';
+  const { user, isInitialized } = useAuth();
+
+  // Redirect già loggati
+  useEffect(() => {
+    const checkAndRedirect = async () => {
+      if (isInitialized && user) {
+        console.log('[SupplierAuth] User already logged in, checking onboarding...');
+        
+        const { data: supplierData } = await supabase
+          .from('suppliers')
+          .select('onboarding_completato')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        const destination = supplierData?.onboarding_completato 
+          ? '/fornitori/dashboard' 
+          : '/fornitori/onboarding';
+        
+        console.log('[SupplierAuth] Redirecting to:', destination);
+        navigate(destination, { replace: true });
+      }
+    };
+
+    checkAndRedirect();
+  }, [user, isInitialized, navigate]);
 
   useEffect(() => {
     const checkEmailConfirmSetting = async () => {
@@ -159,10 +185,9 @@ const SupplierAuth = () => {
           : "Benvenuto nella tua area riservata"
       });
 
-      // Hard redirect per evitare race conditions con ProtectedRoute
-      setTimeout(() => {
-        window.location.href = finalRedirect;
-      }, 500);
+      // Usa navigate invece di hard redirect
+      console.log('[SupplierAuth] Login successful, navigating to:', finalRedirect);
+      navigate(finalRedirect, { replace: true });
 
     } catch (error) {
       console.error('Sign in error:', error);

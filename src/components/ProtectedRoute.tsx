@@ -13,21 +13,26 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children, 
   requireOnboarding = true 
 }) => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, isInitialized } = useAuth();
   const [checkingStatus, setCheckingStatus] = useState(true);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
     const checkOnboardingStatus = async () => {
-      console.log('[ProtectedRoute] checkOnboardingStatus called', { 
-        user: user?.id, 
-        authLoading,
+      console.log('[ProtectedRoute] Checking onboarding status', { 
+        user: user?.id,
+        isInitialized,
         currentPath: location.pathname 
       });
 
+      if (!isInitialized) {
+        console.log('[ProtectedRoute] Auth not initialized yet, waiting...');
+        return;
+      }
+
       if (!user) {
-        console.log('[ProtectedRoute] No user yet, waiting...');
+        console.log('[ProtectedRoute] No user after initialization');
         setCheckingStatus(false);
         return;
       }
@@ -54,16 +59,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       }
     };
 
-    if (!authLoading) {
-      console.log('[ProtectedRoute] Auth loading complete, checking onboarding...');
-      checkOnboardingStatus();
-    } else {
-      console.log('[ProtectedRoute] Still loading auth...');
-    }
-  }, [user, authLoading, location.pathname]);
+    checkOnboardingStatus();
+  }, [user, isInitialized, location.pathname]);
 
-  if (authLoading || checkingStatus) {
-    console.log('[ProtectedRoute] Loading...', { authLoading, checkingStatus });
+  if (!isInitialized || checkingStatus) {
+    console.log('[ProtectedRoute] Loading...', { isInitialized, checkingStatus });
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-subtle">
         <div className="text-center space-y-4">
@@ -76,11 +76,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   if (!user) {
     console.log('[ProtectedRoute] No user, redirecting to auth');
-    // Evita redirect loop - se siamo già su /fornitori/auth, non fare nulla
-    if (location.pathname === '/fornitori/auth') {
-      console.log('[ProtectedRoute] Already on auth page, not redirecting');
-      return <>{children}</>;
-    }
     return <Navigate to="/fornitori/auth" replace />;
   }
 
