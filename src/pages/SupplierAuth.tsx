@@ -159,7 +159,10 @@ const SupplierAuth = () => {
           : "Benvenuto nella tua area riservata"
       });
 
-      navigate(finalRedirect);
+      // Hard redirect per evitare race conditions con ProtectedRoute
+      setTimeout(() => {
+        window.location.href = finalRedirect;
+      }, 500);
 
     } catch (error) {
       console.error('Sign in error:', error);
