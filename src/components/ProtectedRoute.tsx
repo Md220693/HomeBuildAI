@@ -20,12 +20,20 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   useEffect(() => {
     const checkOnboardingStatus = async () => {
+      console.log('[ProtectedRoute] checkOnboardingStatus called', { 
+        user: user?.id, 
+        authLoading,
+        currentPath: location.pathname 
+      });
+
       if (!user) {
+        console.log('[ProtectedRoute] No user yet, waiting...');
         setCheckingStatus(false);
         return;
       }
 
       try {
+        console.log('[ProtectedRoute] Fetching onboarding status for user:', user.id);
         const { data, error } = await supabase
           .from('suppliers')
           .select('onboarding_completato')
@@ -33,23 +41,29 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           .maybeSingle();
 
         if (error) {
-          console.error('Error checking onboarding status:', error);
+          console.error('[ProtectedRoute] Error checking onboarding status:', error);
         }
 
-        setHasCompletedOnboarding(data?.onboarding_completato || false);
+        const completed = data?.onboarding_completato || false;
+        console.log('[ProtectedRoute] Onboarding status:', completed);
+        setHasCompletedOnboarding(completed);
       } catch (error) {
-        console.error('Error in onboarding check:', error);
+        console.error('[ProtectedRoute] Error in onboarding check:', error);
       } finally {
         setCheckingStatus(false);
       }
     };
 
     if (!authLoading) {
+      console.log('[ProtectedRoute] Auth loading complete, checking onboarding...');
       checkOnboardingStatus();
+    } else {
+      console.log('[ProtectedRoute] Still loading auth...');
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, location.pathname]);
 
   if (authLoading || checkingStatus) {
+    console.log('[ProtectedRoute] Loading...', { authLoading, checkingStatus });
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-subtle">
         <div className="text-center space-y-4">
@@ -61,19 +75,28 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (!user) {
+    console.log('[ProtectedRoute] No user, redirecting to auth');
+    // Evita redirect loop - se siamo già su /fornitori/auth, non fare nulla
+    if (location.pathname === '/fornitori/auth') {
+      console.log('[ProtectedRoute] Already on auth page, not redirecting');
+      return <>{children}</>;
+    }
     return <Navigate to="/fornitori/auth" replace />;
   }
 
   // Se siamo sulla pagina di onboarding, permettiamo l'accesso
   if (location.pathname === '/fornitori/onboarding') {
+    console.log('[ProtectedRoute] On onboarding page, allowing access');
     return <>{children}</>;
   }
 
   // Se richiediamo onboarding completato e non è completato, reindirizziamo
   if (requireOnboarding && !hasCompletedOnboarding) {
+    console.log('[ProtectedRoute] Onboarding required but not completed, redirecting');
     return <Navigate to="/fornitori/onboarding" replace />;
   }
 
+  console.log('[ProtectedRoute] All checks passed, rendering children');
   return <>{children}</>;
 };
 
