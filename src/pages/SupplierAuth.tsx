@@ -112,7 +112,7 @@ const SupplierAuth = () => {
       const validatedData = authSchema.parse({ email, password });
       setIsLoading(true);
 
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
         email: validatedData.email,
         password: validatedData.password,
       });
@@ -130,12 +130,36 @@ const SupplierAuth = () => {
         return;
       }
 
+      // Verifica se esiste un profilo fornitore e se l'onboarding è completato
+      const { data: supplierData, error: supplierError } = await supabase
+        .from('suppliers')
+        .select('onboarding_completato')
+        .eq('user_id', authData.user.id)
+        .maybeSingle();
+
+      if (supplierError) {
+        console.error('Error checking supplier status:', supplierError);
+      }
+
+      // Determina il redirect corretto
+      let finalRedirect = '/fornitori/dashboard';
+      
+      if (!supplierData) {
+        // Non esiste record fornitore → vai all'onboarding
+        finalRedirect = '/fornitori/onboarding';
+      } else if (!supplierData.onboarding_completato) {
+        // Onboarding non completato → vai all'onboarding
+        finalRedirect = '/fornitori/onboarding';
+      }
+
       toast({
         title: "Accesso effettuato!",
-        description: "Benvenuto nella tua area riservata"
+        description: finalRedirect === '/fornitori/onboarding' 
+          ? "Completa il tuo profilo per continuare"
+          : "Benvenuto nella tua area riservata"
       });
 
-      navigate(redirectTo);
+      navigate(finalRedirect);
 
     } catch (error) {
       console.error('Sign in error:', error);
