@@ -28,30 +28,6 @@ const SupplierAuth = () => {
   const redirectTo = searchParams.get('redirect') || '/fornitori/dashboard';
   const { user, isInitialized } = useAuth();
 
-  // Redirect già loggati
-  useEffect(() => {
-    const checkAndRedirect = async () => {
-      if (isInitialized && user) {
-        console.log('[SupplierAuth] User already logged in, checking onboarding...');
-        
-        const { data: supplierData } = await supabase
-          .from('suppliers')
-          .select('onboarding_completato')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        const destination = supplierData?.onboarding_completato 
-          ? '/fornitori/dashboard' 
-          : '/fornitori/onboarding';
-        
-        console.log('[SupplierAuth] Redirecting to:', destination);
-        navigate(destination, { replace: true });
-      }
-    };
-
-    checkAndRedirect();
-  }, [user, isInitialized, navigate]);
-
   useEffect(() => {
     const checkEmailConfirmSetting = async () => {
       try {

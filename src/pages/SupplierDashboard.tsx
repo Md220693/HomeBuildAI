@@ -67,18 +67,20 @@ const SupplierDashboard = () => {
   const [activeTab, setActiveTab] = useState("nuovi-lead");
   const [supplierLeads, setSupplierLeads] = useState<SupplierLead[]>([]);
   const [leadsLoading, setLeadsLoading] = useState(false);
-  const { user, signOut } = useAuth();
+  const { user, isInitialized, signOut } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (!isInitialized) return;
+    
     if (!user) {
       navigate('/fornitori/auth');
       return;
     }
 
     loadSupplierProfile();
-  }, [user, navigate]);
+  }, [user, isInitialized, navigate]);
 
   useEffect(() => {
     if (supplier) {
