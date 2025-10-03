@@ -33,12 +33,12 @@ const App = () => (
           {/* Supplier Routes */}
           <Route path="/fornitori/auth" element={<SupplierAuth />} />
           <Route path="/fornitori/onboarding" element={
-            <ProtectedRoute>
+            <ProtectedRoute requireRole="supplier">
               <SupplierOnboarding />
             </ProtectedRoute>
           } />
           <Route path="/fornitori/dashboard" element={
-            <ProtectedRoute>
+            <ProtectedRoute requireRole="supplier">
               <SupplierDashboard />
             </ProtectedRoute>
           } />
@@ -46,11 +46,15 @@ const App = () => (
           {/* Admin Routes */}
           <Route path="/admin/auth" element={<AdminAuth />} />
           <Route path="/admin" element={
-            <ProtectedRoute>
+            <ProtectedRoute requireRole="admin" requireOnboarding={false}>
               <AdminConsole />
             </ProtectedRoute>
           } />
-          <Route path="/admin/ai-trainer" element={<AITrainer />} />
+          <Route path="/admin/ai-trainer" element={
+            <ProtectedRoute requireRole="admin" requireOnboarding={false}>
+              <AITrainer />
+            </ProtectedRoute>
+          } />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
