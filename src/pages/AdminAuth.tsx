@@ -25,11 +25,25 @@ const AdminAuth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // Redirect if already logged in as admin
+  // Check if user is admin and redirect or show error
   useEffect(() => {
-    if (!loading && user) {
-      navigate('/admin');
-    }
+    const checkAdminRole = async () => {
+      if (!loading && user) {
+        const { data: isAdmin } = await supabase.rpc('has_role', {
+          _user_id: user.id,
+          _role: 'admin'
+        });
+        
+        if (isAdmin) {
+          navigate('/admin');
+        } else {
+          toast.error('Non hai i permessi per accedere all\'area amministratore');
+          await supabase.auth.signOut();
+        }
+      }
+    };
+    
+    checkAdminRole();
   }, [user, loading, navigate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
