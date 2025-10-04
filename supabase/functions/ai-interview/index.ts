@@ -1,6 +1,46 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
 
+// Helper function to map CAP to Regione
+function mapCapToRegione(cap: string | null): string | null {
+  if (!cap) return null;
+  
+  const capNum = parseInt(cap);
+  if (isNaN(capNum)) return null;
+  
+  // Map CAP ranges to regions (Italian postal code system)
+  if (capNum >= 10000 && capNum <= 10999) return 'Piemonte';
+  if (capNum >= 12000 && capNum <= 14999) return 'Piemonte';
+  if (capNum >= 15000 && capNum <= 18999) return 'Piemonte';
+  if (capNum >= 20000 && capNum <= 20999) return 'Lombardia';
+  if (capNum >= 22000 && capNum <= 27100) return 'Lombardia';
+  if (capNum >= 30000 && capNum <= 30399) return 'Veneto';
+  if (capNum >= 31000 && capNum <= 32999) return 'Veneto';
+  if (capNum >= 35000 && capNum <= 36199) return 'Veneto';
+  if (capNum >= 37000 && capNum <= 37139) return 'Veneto';
+  if (capNum >= 38000 && capNum <= 38999) return 'Trentino-Alto Adige';
+  if (capNum >= 39000 && capNum <= 39999) return 'Trentino-Alto Adige';
+  if (capNum >= 33000 && capNum <= 34999) return 'Friuli-Venezia Giulia';
+  if (capNum >= 16000 && capNum <= 19999) return 'Liguria';
+  if (capNum >= 40000 && capNum <= 43999) return 'Emilia-Romagna';
+  if (capNum >= 44000 && capNum <= 48999) return 'Emilia-Romagna';
+  if (capNum >= 47000 && capNum <= 47999) return 'Emilia-Romagna';
+  if (capNum >= 50000 && capNum <= 59999) return 'Toscana';
+  if (capNum >= 6000 && capNum <= 6999) return 'Umbria';
+  if (capNum >= 60000 && capNum <= 63999) return 'Marche';
+  if (capNum >= 00000 && capNum <= 5999) return 'Lazio';
+  if (capNum >= 65000 && capNum <= 67999) return 'Abruzzo';
+  if (capNum >= 86000 && capNum <= 86999) return 'Molise';
+  if (capNum >= 70000 && capNum <= 76999) return 'Puglia';
+  if (capNum >= 85000 && capNum <= 85999) return 'Basilicata';
+  if (capNum >= 80000 && capNum <= 84999) return 'Campania';
+  if (capNum >= 87000 && capNum <= 89999) return 'Calabria';
+  if (capNum >= 90000 && capNum <= 98999) return 'Sicilia';
+  if (capNum >= 7000 && capNum <= 9999) return 'Sardegna';
+  
+  return null;
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -114,27 +154,33 @@ serve(async (req) => {
 
 🎯 OBIETTIVO: Raccogliere informazioni per capitolato tecnico.
 
-📋 DOMANDE ESSENZIALI:
-1. Dove si trova l'immobile? (città, CAP)
-2. Cosa vuoi ristrutturare? (tutta la casa o solo un ambiente?)
-3. Quanti mq?
-4. Che lavori servono?
-5. Qualità materiali? (economico/standard/premium)
-6. Budget orientativo?
-7. Email per invio capitolato? (chiedi DOPO il budget)
+      📋 DOMANDE ESSENZIALI:
+      1. In quale CITTÀ e CAP si trova l'immobile? (es: Milano, 20100) - OBBLIGATORIO
+      2. Cosa vuoi ristrutturare? (tutta la casa o solo un ambiente?)
+      3. Quanti mq?
+      4. Che lavori servono?
+      5. Qualità materiali? (economico/standard/premium)
+      6. Budget orientativo?
+      7. OBBLIGATORIO: "Per inviarti il capitolato, qual è la tua EMAIL?" (chiedi SEMPRE dopo budget)
 
 🚫 REGOLE:
 - UNA DOMANDA ALLA VOLTA (max 30 parole)
 - Tono amichevole e conversazionale
 - NON generare preventivi
 
-✅ QUANDO HAI RACCOLTO TUTTE LE 7 INFORMAZIONI ESSENZIALI, SCRIVI ESATTAMENTE:
-"Perfetto! Ho tutte le informazioni necessarie. Ora genererò il capitolato tecnico. COMPLETATO"
-
-IMPORTANTE: 
-- La parola COMPLETATO deve essere presente per segnalare la fine
-- Scrivi ESATTAMENTE quella frase con COMPLETATO alla fine
-- PRIMA di completare, assicurati di aver raccolto anche l'EMAIL
+      ✅ QUANDO HAI RACCOLTO TUTTE LE 7 INFORMAZIONI ESSENZIALI, SCRIVI ESATTAMENTE:
+      "Perfetto! Ho tutte le informazioni necessarie. Ora genererò il capitolato tecnico. COMPLETATO"
+      
+      IMPORTANTE: 
+      - La parola COMPLETATO deve essere presente per segnalare la fine
+      - Scrivi ESATTAMENTE quella frase con COMPLETATO alla fine
+      - PRIMA di completare, assicurati di aver raccolto anche l'EMAIL
+      
+      ⚠️ VALIDAZIONE OBBLIGATORIA PRIMA DI COMPLETARE:
+      - Email DEVE essere presente (formato valido: xxx@yyy.zzz)
+      - Location DEVE contenere CITTÀ e CAP a 5 cifre (es: Milano, 20100)
+      - Se manca UNO di questi dati, NON completare l'intervista
+      - Chiedi di nuovo gentilmente i dati mancanti prima di procedere
 
 ${fileContext}
 
@@ -222,6 +268,11 @@ ${scopeContext}`;
     const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
     const emailMatches = conversationText.match(emailRegex);
     const detectedEmail = emailMatches ? emailMatches[emailMatches.length - 1] : null;
+    
+    // Extract location (city + CAP) with more robust pattern
+    const locationMatch = conversationText.match(/([a-zàèéìòù\s'-]+),?\s*(\d{5})/i);
+    const citta = locationMatch?.[1]?.trim() || null;
+    const cap = locationMatch?.[2] || null;
 
     // Detect partial scope from keywords
     const partialKeywords = [
@@ -288,6 +339,26 @@ ${scopeContext}`;
       detectedScope: detectedRenovationScope
     });
     
+    // ====== PRE-COMPLETION VALIDATION (CRITICAL) ======
+    const hasValidLocation = cap && citta;
+    const hasValidEmail = detectedEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(detectedEmail);
+    
+    // If AI wants to complete but essential data is missing, force re-prompt
+    if ((isComplete || hasCompletionPhrase) && (!hasValidEmail || !hasValidLocation)) {
+      const missingInfo = [];
+      if (!hasValidEmail) missingInfo.push('email');
+      if (!hasValidLocation) missingInfo.push('città e CAP (es: Milano, 20100)');
+      
+      console.log('⚠️ Blocking completion - missing data:', missingInfo);
+      
+      return new Response(JSON.stringify({
+        response: `Prima di completare, ho bisogno di: ${missingInfo.join(', ')}. Puoi fornirmeli?`,
+        interview_complete: false
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
     // TRIGGER AUTO-COMPLETION if ANY fallback is met
     if (isComplete || 
         (detectedRenovationScope !== 'unknown' && hasCompletionPhrase) ||
@@ -295,18 +366,23 @@ ${scopeContext}`;
         messageThresholdReached) {
       console.log('💾 Saving interview completion data...');
       
-      // Build comprehensive interview_data with conversation and extracted details
+      // Build comprehensive interview_data with location at root level
       const interviewData = {
-        conversation: messages,
-        client_info: {
-          email: detectedEmail
+        location: cap ? `${citta}, ${cap}` : 'Non specificato',  // Root field for backward compatibility
+        client_info: { 
+          email: detectedEmail 
         },
         project_details: {
+          city: citta,
+          postal_code: cap,
           renovation_scope: detectedRenovationScope,
           target_rooms: detectedTargetRooms,
-          is_micro_intervention: isMicroIntervention,
-          location: conversationText.match(/\b\d{5}\b/)?.[0] || 'Non specificato',
+          is_micro_intervention: isMicroIntervention
         },
+        conversation: messages,
+        scope_detected: detectedRenovationScope,
+        target_rooms: detectedTargetRooms,
+        is_micro_intervention: isMicroIntervention,
         metadata: {
           completed_at: new Date().toISOString(),
           message_count: messages.length,
@@ -332,7 +408,7 @@ ${scopeContext}`;
         conversationalResponse = aiResponse.substring(0, tagIndex).trim();
       }
 
-      // Update lead with all detected data including full conversation
+      // Update lead with interview completion + geographical data
       const { error: updateError } = await supabase
         .from('leads')
         .update({
@@ -340,7 +416,11 @@ ${scopeContext}`;
           renovation_scope: detectedRenovationScope,
           target_rooms: detectedTargetRooms.length > 0 ? detectedTargetRooms : null,
           scope_json: scopeData,
-          interview_data: interviewData
+          interview_data: interviewData,
+          // NEW: Geographical mapping
+          cap: cap,
+          citta: citta,
+          regione: mapCapToRegione(cap)
         })
         .eq('id', leadId);
 

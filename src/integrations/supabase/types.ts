@@ -239,7 +239,9 @@ export type Database = {
       leads: {
         Row: {
           assignment_type: string | null
+          cap: string | null
           capitolato_data: Json | null
+          citta: string | null
           confidence: number | null
           cost_estimate_max: number | null
           cost_estimate_min: number | null
@@ -256,6 +258,7 @@ export type Database = {
           otp_verified_at: string | null
           pdf_url: string | null
           planimetria_url: string | null
+          regione: string | null
           renovation_scope: string | null
           scope_json: Json | null
           skip_files: boolean | null
@@ -266,7 +269,9 @@ export type Database = {
         }
         Insert: {
           assignment_type?: string | null
+          cap?: string | null
           capitolato_data?: Json | null
+          citta?: string | null
           confidence?: number | null
           cost_estimate_max?: number | null
           cost_estimate_min?: number | null
@@ -283,6 +288,7 @@ export type Database = {
           otp_verified_at?: string | null
           pdf_url?: string | null
           planimetria_url?: string | null
+          regione?: string | null
           renovation_scope?: string | null
           scope_json?: Json | null
           skip_files?: boolean | null
@@ -293,7 +299,9 @@ export type Database = {
         }
         Update: {
           assignment_type?: string | null
+          cap?: string | null
           capitolato_data?: Json | null
+          citta?: string | null
           confidence?: number | null
           cost_estimate_max?: number | null
           cost_estimate_min?: number | null
@@ -310,6 +318,7 @@ export type Database = {
           otp_verified_at?: string | null
           pdf_url?: string | null
           planimetria_url?: string | null
+          regione?: string | null
           renovation_scope?: string | null
           scope_json?: Json | null
           skip_files?: boolean | null

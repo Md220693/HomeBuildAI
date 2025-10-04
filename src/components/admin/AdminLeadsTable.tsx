@@ -22,6 +22,9 @@ interface Lead {
   max_assignments: number;
   assignment_type: string;
   capitolato_data?: any;
+  cap?: string;
+  citta?: string;
+  regione?: string;
 }
 
 const AdminLeadsTable = () => {
@@ -43,10 +46,10 @@ const AdminLeadsTable = () => {
 
   const loadLeads = async () => {
     try {
-      const { data, error } = await supabase
-        .from('leads')
-        .select('id, status, created_at, user_contact, interview_data, cost_estimate_min, cost_estimate_max, current_assignments, max_assignments, assignment_type, capitolato_data')
-        .order('created_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('leads')
+      .select('id, status, created_at, user_contact, interview_data, cost_estimate_min, cost_estimate_max, current_assignments, max_assignments, assignment_type, capitolato_data, cap, citta, regione')
+      .order('created_at', { ascending: false });
 
       if (error) throw error;
       setLeads(data || []);
@@ -218,6 +221,9 @@ const AdminLeadsTable = () => {
                 <TableRow>
                   <TableHead>ID</TableHead>
                   <TableHead>Cliente</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Città/Regione</TableHead>
+                  <TableHead>Telefono</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Capitolato</TableHead>
                   <TableHead>Stima Costi</TableHead>
@@ -230,13 +236,13 @@ const AdminLeadsTable = () => {
               <TableBody>
                  {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8">
+                    <TableCell colSpan={12} className="text-center py-8">
                       Caricamento...
                     </TableCell>
                   </TableRow>
-                ) : filteredLeads.length === 0 ? (
+                 ) : filteredLeads.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                       Nessun lead trovato
                     </TableCell>
                   </TableRow>
@@ -248,24 +254,45 @@ const AdminLeadsTable = () => {
                       </TableCell>
                       <TableCell>
                         {lead.user_contact ? (
-                          <div>
-                            <div className="font-medium">
-                              {lead.user_contact.nome} {lead.user_contact.cognome}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {lead.user_contact.email}
-                            </div>
-                          </div>
-                        ) : lead.interview_data?.client_info?.email ? (
-                          <div>
-                            <div className="text-sm text-muted-foreground">
-                              {lead.interview_data.client_info.email}
-                            </div>
-                            <Badge variant="secondary" className="text-xs mt-1">Solo email</Badge>
+                          <div className="font-medium">
+                            {lead.user_contact.nome} {lead.user_contact.cognome}
                           </div>
                         ) : (
-                          <span className="text-muted-foreground">Non disponibile</span>
+                          <span className="text-muted-foreground">N/D</span>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {lead.interview_data?.client_info?.email || lead.user_contact?.email || (
+                            <span className="text-muted-foreground">N/D</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {lead.citta && lead.regione ? (
+                            <>
+                              <div className="font-medium">{lead.citta}</div>
+                              <div className="text-xs text-muted-foreground">{lead.regione} - {lead.cap}</div>
+                            </>
+                          ) : lead.interview_data?.project_details?.city ? (
+                            <>
+                              <div className="font-medium">{lead.interview_data.project_details.city}</div>
+                              <div className="text-xs text-muted-foreground">{lead.interview_data.project_details.postal_code}</div>
+                            </>
+                          ) : lead.interview_data?.location ? (
+                            <div className="text-xs">{lead.interview_data.location}</div>
+                          ) : (
+                            <span className="text-muted-foreground">N/D</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {lead.user_contact?.telefono || (
+                            <span className="text-muted-foreground">N/D</span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         {getStatusBadge(lead.status)}
