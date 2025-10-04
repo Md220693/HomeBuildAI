@@ -288,7 +288,25 @@ ${scopeContext}`;
         messageThresholdReached) {
       console.log('💾 Saving interview completion data...');
       
+      // Build comprehensive interview_data with conversation and extracted details
       const interviewData = {
+        conversation: messages,
+        project_details: {
+          renovation_scope: detectedRenovationScope,
+          target_rooms: detectedTargetRooms,
+          is_micro_intervention: isMicroIntervention,
+          location: conversationText.match(/\b\d{5}\b/)?.[0] || 'Non specificato',
+        },
+        metadata: {
+          completed_at: new Date().toISOString(),
+          message_count: messages.length,
+          completion_trigger: isComplete ? 'ai_signal' : 
+                            hasCompletionPhrase ? 'completion_phrase' :
+                            userRefusedBudget ? 'budget_refused' : 'message_threshold'
+        }
+      };
+
+      const scopeData = {
         status: 'completed',
         detected_scope: detectedRenovationScope,
         target_rooms: detectedTargetRooms,
@@ -304,21 +322,22 @@ ${scopeContext}`;
         conversationalResponse = aiResponse.substring(0, tagIndex).trim();
       }
 
-      // Update lead with all detected data
+      // Update lead with all detected data including full conversation
       const { error: updateError } = await supabase
         .from('leads')
         .update({
           status: 'interview_completed',
           renovation_scope: detectedRenovationScope,
           target_rooms: detectedTargetRooms.length > 0 ? detectedTargetRooms : null,
-          scope_json: interviewData
+          scope_json: scopeData,
+          interview_data: interviewData
         })
         .eq('id', leadId);
 
       if (updateError) {
         console.error('❌ Failed to update lead:', updateError);
       } else {
-        console.log('✅ Lead updated successfully:', { detectedRenovationScope, detectedTargetRooms, isMicroIntervention });
+        console.log('✅ Lead updated successfully with full conversation:', { detectedRenovationScope, detectedTargetRooms, isMicroIntervention, messageCount: messages.length });
       }
 
       return new Response(JSON.stringify({ 

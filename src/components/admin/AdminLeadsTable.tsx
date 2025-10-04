@@ -322,6 +322,36 @@ const AdminLeadsTable = () => {
                               </DialogHeader>
                               {selectedLead && (
                                 <div className="space-y-6 max-h-[600px] overflow-y-auto">
+                                  {/* Scheda Riassuntiva Cliente - IN EVIDENZA */}
+                                  {selectedLead.user_contact && (
+                                    <div className="bg-primary/5 border-2 border-primary/20 rounded-lg p-4 space-y-3">
+                                      <strong className="text-xl text-primary flex items-center gap-2">
+                                        📋 Scheda Riassuntiva Cliente
+                                      </strong>
+                                      <div className="grid grid-cols-2 gap-3 text-sm">
+                                        <div className="space-y-1">
+                                          <div className="text-muted-foreground text-xs font-medium uppercase">Nome Completo</div>
+                                          <div className="font-semibold text-base">{selectedLead.user_contact.nome} {selectedLead.user_contact.cognome}</div>
+                                        </div>
+                                        <div className="space-y-1">
+                                          <div className="text-muted-foreground text-xs font-medium uppercase">Email</div>
+                                          <a href={`mailto:${selectedLead.user_contact.email}`} className="text-primary hover:underline font-medium">{selectedLead.user_contact.email}</a>
+                                        </div>
+                                        <div className="space-y-1">
+                                          <div className="text-muted-foreground text-xs font-medium uppercase">Telefono</div>
+                                          <a href={`tel:${selectedLead.user_contact.telefono}`} className="text-primary hover:underline font-medium">{selectedLead.user_contact.telefono}</a>
+                                        </div>
+                                        {selectedLead.user_contact.indirizzo && (
+                                          <div className="space-y-1">
+                                            <div className="text-muted-foreground text-xs font-medium uppercase">Indirizzo</div>
+                                            <div className="font-medium">{selectedLead.user_contact.indirizzo}</div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Informazioni Lead */}
                                   <div className="space-y-2">
                                     <strong className="text-lg">Informazioni Lead</strong>
                                     <div className="ml-4 space-y-1 text-sm">
@@ -337,35 +367,89 @@ const AdminLeadsTable = () => {
                                     </div>
                                   </div>
                                   
-                                  {selectedLead.user_contact && (
-                                    <div className="space-y-2 border-t pt-4">
-                                      <strong className="text-lg">Dati Cliente</strong>
-                                      <div className="ml-4 space-y-1 text-sm">
-                                        <div><span className="font-medium">Nome:</span> {selectedLead.user_contact.nome}</div>
-                                        <div><span className="font-medium">Cognome:</span> {selectedLead.user_contact.cognome}</div>
-                                        <div><span className="font-medium">Email:</span> <a href={`mailto:${selectedLead.user_contact.email}`} className="text-primary hover:underline">{selectedLead.user_contact.email}</a></div>
-                                        <div><span className="font-medium">Telefono:</span> <a href={`tel:${selectedLead.user_contact.telefono}`} className="text-primary hover:underline">{selectedLead.user_contact.telefono}</a></div>
-                                        {selectedLead.user_contact.indirizzo && (
-                                          <div><span className="font-medium">Indirizzo:</span> {selectedLead.user_contact.indirizzo}</div>
-                                        )}
-                                      </div>
+                                  {/* Report Intervista Completo */}
+                                  {selectedLead.interview_data && (
+                                    <div className="space-y-4 border-t pt-4">
+                                      <strong className="text-lg">📝 Report Intervista Ristrutturazione</strong>
+                                      
+                                      {/* Dati Tecnici Progetto */}
+                                      {selectedLead.interview_data.project_details && (
+                                        <div className="bg-muted/30 rounded-lg p-4 space-y-3">
+                                          <div className="font-semibold text-base">🏗️ Dettagli Progetto</div>
+                                          <div className="ml-4 space-y-2 text-sm">
+                                            {selectedLead.interview_data.project_details.renovation_scope && (
+                                              <div>
+                                                <span className="font-medium">Tipo Ristrutturazione:</span> 
+                                                <span className="ml-2 capitalize">{selectedLead.interview_data.project_details.renovation_scope === 'full' ? 'Completa' : selectedLead.interview_data.project_details.renovation_scope === 'partial' ? 'Parziale' : 'Micro-intervento'}</span>
+                                              </div>
+                                            )}
+                                            {selectedLead.interview_data.project_details.target_rooms && selectedLead.interview_data.project_details.target_rooms.length > 0 && (
+                                              <div>
+                                                <span className="font-medium">Ambienti Interessati:</span>
+                                                <div className="ml-4 flex flex-wrap gap-1 mt-1">
+                                                  {selectedLead.interview_data.project_details.target_rooms.map((room: string) => (
+                                                    <Badge key={room} variant="secondary" className="capitalize">{room}</Badge>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
+                                            {selectedLead.interview_data.project_details.location && (
+                                              <div>
+                                                <span className="font-medium">Località:</span> 
+                                                <span className="ml-2">{selectedLead.interview_data.project_details.location}</span>
+                                              </div>
+                                            )}
+                                            {selectedLead.interview_data.project_details.is_micro_intervention && (
+                                              <div>
+                                                <Badge variant="outline" className="bg-yellow-500/10 text-yellow-700 dark:text-yellow-400">⚠️ Micro-intervento</Badge>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Conversazione Completa */}
+                                      {selectedLead.interview_data.conversation && selectedLead.interview_data.conversation.length > 0 && (
+                                        <div className="space-y-3">
+                                          <div className="font-semibold text-base">💬 Conversazione Completa</div>
+                                          <div className="space-y-2 max-h-96 overflow-y-auto border rounded-lg p-3 bg-muted/10">
+                                            {selectedLead.interview_data.conversation.map((msg: any, idx: number) => (
+                                              <div 
+                                                key={idx} 
+                                                className={`p-3 rounded-lg ${
+                                                  msg.role === 'assistant' 
+                                                    ? 'bg-primary/5 border-l-2 border-primary' 
+                                                    : 'bg-secondary/20 border-l-2 border-secondary ml-8'
+                                                }`}
+                                              >
+                                                <div className="text-xs font-semibold mb-1 uppercase text-muted-foreground">
+                                                  {msg.role === 'assistant' ? '🤖 AI' : '👤 Cliente'}
+                                                </div>
+                                                <div className="text-sm whitespace-pre-wrap">{msg.content}</div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Metadata */}
+                                      {selectedLead.interview_data.metadata && (
+                                        <div className="text-xs text-muted-foreground border-t pt-3 space-y-1">
+                                          <div><span className="font-medium">Data Completamento:</span> {selectedLead.interview_data.metadata.completed_at ? new Date(selectedLead.interview_data.metadata.completed_at).toLocaleString('it-IT') : '-'}</div>
+                                          <div><span className="font-medium">Messaggi Scambiati:</span> {selectedLead.interview_data.metadata.message_count || '-'}</div>
+                                          {selectedLead.interview_data.metadata.completion_trigger && (
+                                            <div><span className="font-medium">Completamento:</span> {selectedLead.interview_data.metadata.completion_trigger}</div>
+                                          )}
+                                        </div>
+                                      )}
                                     </div>
                                   )}
-                                  
-                                  {selectedLead.interview_data && Object.keys(selectedLead.interview_data).length > 0 && (
-                                    <div className="space-y-2 border-t pt-4">
-                                      <strong className="text-lg">Risposte Intervista AI</strong>
-                                      <div className="ml-4 space-y-2 text-sm">
-                                        {Object.entries(selectedLead.interview_data).map(([key, value]) => (
-                                          <div key={key} className="space-y-1">
-                                            <span className="font-medium capitalize">{key.replace(/_/g, ' ')}:</span>
-                                            <div className="ml-4 text-muted-foreground">
-                                              {typeof value === 'object' && value !== null 
-                                                ? JSON.stringify(value, null, 2)
-                                                : String(value)}
-                                            </div>
-                                          </div>
-                                        ))}
+
+                                  {/* Messaggio se interview_data è vuoto */}
+                                  {(!selectedLead.interview_data || Object.keys(selectedLead.interview_data).length === 0) && (
+                                    <div className="border-t pt-4">
+                                      <div className="bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border border-yellow-500/20 rounded-lg p-4 text-sm">
+                                        ℹ️ Nessun dato di intervista disponibile. L'intervista potrebbe essere stata completata prima dell'implementazione di questa funzionalità.
                                       </div>
                                     </div>
                                   )}
