@@ -15,6 +15,7 @@ interface Lead {
   status: string;
   created_at: string;
   user_contact?: any;
+  interview_data?: any;
   cost_estimate_min?: number;
   cost_estimate_max?: number;
   current_assignments: number;
@@ -44,7 +45,7 @@ const AdminLeadsTable = () => {
     try {
       const { data, error } = await supabase
         .from('leads')
-        .select('id, status, created_at, user_contact, cost_estimate_min, cost_estimate_max, current_assignments, max_assignments, assignment_type, capitolato_data')
+        .select('id, status, created_at, user_contact, interview_data, cost_estimate_min, cost_estimate_max, current_assignments, max_assignments, assignment_type, capitolato_data')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -320,27 +321,70 @@ const AdminLeadsTable = () => {
                                 </DialogDescription>
                               </DialogHeader>
                               {selectedLead && (
-                                <div className="space-y-4">
-                                  <div>
-                                    <strong>ID:</strong> {selectedLead.id}
+                                <div className="space-y-6 max-h-[600px] overflow-y-auto">
+                                  <div className="space-y-2">
+                                    <strong className="text-lg">Informazioni Lead</strong>
+                                    <div className="ml-4 space-y-1 text-sm">
+                                      <div><span className="font-medium">ID:</span> {selectedLead.id}</div>
+                                      <div><span className="font-medium">Status:</span> {getStatusBadge(selectedLead.status)}</div>
+                                      <div><span className="font-medium">Data Creazione:</span> {formatDate(selectedLead.created_at)}</div>
+                                      <div><span className="font-medium">Tipo Assegnazione:</span> {selectedLead.assignment_type === 'exclusive' ? 'Esclusivo' : 'Condiviso'}</div>
+                                      {(selectedLead.cost_estimate_min || selectedLead.cost_estimate_max) && (
+                                        <div>
+                                          <span className="font-medium">Stima Costi:</span> {formatCurrency(selectedLead.cost_estimate_min)} - {formatCurrency(selectedLead.cost_estimate_max)}
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
-                                  <div>
-                                    <strong>Status:</strong> {getStatusBadge(selectedLead.status)}
-                                  </div>
+                                  
                                   {selectedLead.user_contact && (
-                                    <div>
-                                      <strong>Cliente:</strong>
-                                      <div className="ml-4 mt-2 space-y-1">
-                                        <div>Nome: {selectedLead.user_contact.nome} {selectedLead.user_contact.cognome}</div>
-                                        <div>Email: {selectedLead.user_contact.email}</div>
-                                        <div>Telefono: {selectedLead.user_contact.telefono}</div>
-                                        <div>Indirizzo: {selectedLead.user_contact.indirizzo}</div>
+                                    <div className="space-y-2 border-t pt-4">
+                                      <strong className="text-lg">Dati Cliente</strong>
+                                      <div className="ml-4 space-y-1 text-sm">
+                                        <div><span className="font-medium">Nome:</span> {selectedLead.user_contact.nome}</div>
+                                        <div><span className="font-medium">Cognome:</span> {selectedLead.user_contact.cognome}</div>
+                                        <div><span className="font-medium">Email:</span> <a href={`mailto:${selectedLead.user_contact.email}`} className="text-primary hover:underline">{selectedLead.user_contact.email}</a></div>
+                                        <div><span className="font-medium">Telefono:</span> <a href={`tel:${selectedLead.user_contact.telefono}`} className="text-primary hover:underline">{selectedLead.user_contact.telefono}</a></div>
+                                        {selectedLead.user_contact.indirizzo && (
+                                          <div><span className="font-medium">Indirizzo:</span> {selectedLead.user_contact.indirizzo}</div>
+                                        )}
                                       </div>
                                     </div>
                                   )}
-                                  <div>
-                                    <strong>Data Creazione:</strong> {formatDate(selectedLead.created_at)}
-                                  </div>
+                                  
+                                  {selectedLead.interview_data && Object.keys(selectedLead.interview_data).length > 0 && (
+                                    <div className="space-y-2 border-t pt-4">
+                                      <strong className="text-lg">Risposte Intervista AI</strong>
+                                      <div className="ml-4 space-y-2 text-sm">
+                                        {Object.entries(selectedLead.interview_data).map(([key, value]) => (
+                                          <div key={key} className="space-y-1">
+                                            <span className="font-medium capitalize">{key.replace(/_/g, ' ')}:</span>
+                                            <div className="ml-4 text-muted-foreground">
+                                              {typeof value === 'object' && value !== null 
+                                                ? JSON.stringify(value, null, 2)
+                                                : String(value)}
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {selectedLead.capitolato_data && (
+                                    <div className="space-y-2 border-t pt-4">
+                                      <strong className="text-lg">Capitolato</strong>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => window.open(`/capitolato?leadId=${selectedLead.id}`, '_blank')}
+                                        className="flex items-center gap-2"
+                                      >
+                                        <FileText className="h-4 w-4" />
+                                        Visualizza Capitolato
+                                        <ExternalLink className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </DialogContent>

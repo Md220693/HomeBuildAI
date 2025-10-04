@@ -62,7 +62,7 @@ const Footer = () => {
         </div>
         
         <div className="border-t border-background/20 mt-12 pt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
             <p className="text-background/60 text-sm">
               &copy; 2024 HomeBuildAI. Tutti i diritti riservati.
             </p>
@@ -70,6 +70,28 @@ const Footer = () => {
               <span>🇮🇹 Made in Italy</span>
               <span>🛡️ Dati protetti</span>
               <span>⚡ Powered by AI</span>
+            </div>
+          </div>
+          
+          {/* Banner informazioni aziendali */}
+          <div className="border-t border-background/20 pt-6">
+            <div className="flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8 text-sm text-background/70">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-background/90">P.IVA:</span>
+                <span>IT06190260874</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-background/90">Email:</span>
+                <a href="mailto:info@homebuildai.it" className="hover:text-background transition-smooth">
+                  info@homebuildai.it
+                </a>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-background/90">Tel:</span>
+                <a href="tel:+393500028628" className="hover:text-background transition-smooth">
+                  +39 350 002 8628
+                </a>
+              </div>
             </div>
           </div>
         </div>
