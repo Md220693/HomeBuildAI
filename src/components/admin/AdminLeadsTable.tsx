@@ -120,6 +120,29 @@ const AdminLeadsTable = () => {
     });
   };
 
+  // Helper function per estrarre città da indirizzo (fallback per vecchi lead)
+  const extractCityFromAddress = (address: string | null): string => {
+    if (!address) return 'N/A';
+    
+    const cities = [
+      'Milano', 'Roma', 'Napoli', 'Torino', 'Palermo', 'Genova', 
+      'Bologna', 'Firenze', 'Bari', 'Catania', 'Verona', 'Venezia',
+      'Messina', 'Padova', 'Trieste', 'Taranto', 'Brescia', 'Parma',
+      'Modena', 'Reggio Calabria', 'Reggio Emilia', 'Perugia', 'Livorno', 
+      'Cagliari', 'Arezzo', 'Teramo', 'Latina', 'Sassari', 'Pescara',
+      'Bergamo', 'Trento', 'Vicenza', 'Treviso', 'Ferrara', 'Ravenna',
+      'Rimini', 'Salerno', 'Foggia', 'Ancona', 'Bolzano', 'Novara',
+      'Piacenza', 'Lecce', 'Siena', 'Udine', 'Como', 'La Spezia',
+      'Pisa', 'Lucca', 'Brindisi'
+    ];
+    
+    const found = cities.find(city => 
+      address.toLowerCase().includes(city.toLowerCase())
+    );
+    
+    return found || address.split(',')[0] || 'N/A';
+  };
+
   const updateLeadStatus = async (leadId: string, newStatus: string) => {
     try {
       const { error } = await supabase
@@ -270,11 +293,19 @@ const AdminLeadsTable = () => {
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          {lead.citta && lead.regione ? (
+                          {lead.citta ? (
                             <>
                               <div className="font-medium">{lead.citta}</div>
-                              <div className="text-xs text-muted-foreground">{lead.regione} - {lead.cap}</div>
+                              {lead.regione && (
+                                <div className="text-xs text-muted-foreground">
+                                  {lead.regione}{lead.cap && ` - ${lead.cap}`}
+                                </div>
+                              )}
                             </>
+                          ) : lead.user_contact?.indirizzo ? (
+                            <div className="font-medium">
+                              {extractCityFromAddress(lead.user_contact.indirizzo)}
+                            </div>
                           ) : lead.interview_data?.project_details?.city ? (
                             <>
                               <div className="font-medium">{lead.interview_data.project_details.city}</div>
