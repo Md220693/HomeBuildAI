@@ -256,6 +256,13 @@ const AdminLeadsTable = () => {
                               {lead.user_contact.email}
                             </div>
                           </div>
+                        ) : lead.interview_data?.client_info?.email ? (
+                          <div>
+                            <div className="text-sm text-muted-foreground">
+                              {lead.interview_data.client_info.email}
+                            </div>
+                            <Badge variant="secondary" className="text-xs mt-1">Solo email</Badge>
+                          </div>
                         ) : (
                           <span className="text-muted-foreground">Non disponibile</span>
                         )}
@@ -322,32 +329,44 @@ const AdminLeadsTable = () => {
                               </DialogHeader>
                               {selectedLead && (
                                 <div className="space-y-6 max-h-[600px] overflow-y-auto">
-                                  {/* Scheda Riassuntiva Cliente - IN EVIDENZA */}
-                                  {selectedLead.user_contact && (
+                                   {/* Scheda Riassuntiva Cliente - IN EVIDENZA */}
+                                  {(selectedLead.user_contact || selectedLead.interview_data?.client_info?.email) && (
                                     <div className="bg-primary/5 border-2 border-primary/20 rounded-lg p-4 space-y-3">
                                       <strong className="text-xl text-primary flex items-center gap-2">
                                         📋 Scheda Riassuntiva Cliente
                                       </strong>
-                                      <div className="grid grid-cols-2 gap-3 text-sm">
-                                        <div className="space-y-1">
-                                          <div className="text-muted-foreground text-xs font-medium uppercase">Nome Completo</div>
-                                          <div className="font-semibold text-base">{selectedLead.user_contact.nome} {selectedLead.user_contact.cognome}</div>
-                                        </div>
-                                        <div className="space-y-1">
-                                          <div className="text-muted-foreground text-xs font-medium uppercase">Email</div>
-                                          <a href={`mailto:${selectedLead.user_contact.email}`} className="text-primary hover:underline font-medium">{selectedLead.user_contact.email}</a>
-                                        </div>
-                                        <div className="space-y-1">
-                                          <div className="text-muted-foreground text-xs font-medium uppercase">Telefono</div>
-                                          <a href={`tel:${selectedLead.user_contact.telefono}`} className="text-primary hover:underline font-medium">{selectedLead.user_contact.telefono}</a>
-                                        </div>
-                                        {selectedLead.user_contact.indirizzo && (
+                                      {selectedLead.user_contact ? (
+                                        <div className="grid grid-cols-2 gap-3 text-sm">
                                           <div className="space-y-1">
-                                            <div className="text-muted-foreground text-xs font-medium uppercase">Indirizzo</div>
-                                            <div className="font-medium">{selectedLead.user_contact.indirizzo}</div>
+                                            <div className="text-muted-foreground text-xs font-medium uppercase">Nome Completo</div>
+                                            <div className="font-semibold text-base">{selectedLead.user_contact.nome} {selectedLead.user_contact.cognome}</div>
                                           </div>
-                                        )}
-                                      </div>
+                                          <div className="space-y-1">
+                                            <div className="text-muted-foreground text-xs font-medium uppercase">Email</div>
+                                            <a href={`mailto:${selectedLead.user_contact.email}`} className="text-primary hover:underline font-medium">{selectedLead.user_contact.email}</a>
+                                          </div>
+                                          <div className="space-y-1">
+                                            <div className="text-muted-foreground text-xs font-medium uppercase">Telefono</div>
+                                            <a href={`tel:${selectedLead.user_contact.telefono}`} className="text-primary hover:underline font-medium">{selectedLead.user_contact.telefono}</a>
+                                          </div>
+                                          {selectedLead.user_contact.indirizzo && (
+                                            <div className="space-y-1">
+                                              <div className="text-muted-foreground text-xs font-medium uppercase">Indirizzo</div>
+                                              <div className="font-medium">{selectedLead.user_contact.indirizzo}</div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <div className="space-y-2">
+                                          <div className="space-y-1">
+                                            <div className="text-muted-foreground text-xs font-medium uppercase">Email (da intervista)</div>
+                                            <a href={`mailto:${selectedLead.interview_data.client_info.email}`} className="text-primary hover:underline font-medium">{selectedLead.interview_data.client_info.email}</a>
+                                          </div>
+                                          <Badge variant="secondary" className="text-xs">
+                                            ⚠️ Dati completi non ancora forniti
+                                          </Badge>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
 

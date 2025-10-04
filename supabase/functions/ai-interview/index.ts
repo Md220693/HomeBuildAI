@@ -121,18 +121,20 @@ serve(async (req) => {
 4. Che lavori servono?
 5. Qualità materiali? (economico/standard/premium)
 6. Budget orientativo?
+7. Email per invio capitolato? (chiedi DOPO il budget)
 
 🚫 REGOLE:
 - UNA DOMANDA ALLA VOLTA (max 30 parole)
 - Tono amichevole e conversazionale
 - NON generare preventivi
 
-✅ QUANDO HAI RACCOLTO TUTTE LE 6 INFORMAZIONI ESSENZIALI, SCRIVI ESATTAMENTE:
+✅ QUANDO HAI RACCOLTO TUTTE LE 7 INFORMAZIONI ESSENZIALI, SCRIVI ESATTAMENTE:
 "Perfetto! Ho tutte le informazioni necessarie. Ora genererò il capitolato tecnico. COMPLETATO"
 
 IMPORTANTE: 
 - La parola COMPLETATO deve essere presente per segnalare la fine
 - Scrivi ESATTAMENTE quella frase con COMPLETATO alla fine
+- PRIMA di completare, assicurati di aver raccolto anche l'EMAIL
 
 ${fileContext}
 
@@ -215,6 +217,11 @@ ${scopeContext}`;
     let detectedRenovationScope = 'unknown';
     let detectedTargetRooms: string[] = [];
     let isMicroIntervention = false;
+    
+    // Extract email from conversation
+    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+    const emailMatches = conversationText.match(emailRegex);
+    const detectedEmail = emailMatches ? emailMatches[emailMatches.length - 1] : null;
 
     // Detect partial scope from keywords
     const partialKeywords = [
@@ -291,6 +298,9 @@ ${scopeContext}`;
       // Build comprehensive interview_data with conversation and extracted details
       const interviewData = {
         conversation: messages,
+        client_info: {
+          email: detectedEmail
+        },
         project_details: {
           renovation_scope: detectedRenovationScope,
           target_rooms: detectedTargetRooms,

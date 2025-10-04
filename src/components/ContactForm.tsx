@@ -18,13 +18,14 @@ interface ContactData {
 interface ContactFormProps {
   leadId: string;
   onSuccess: () => void;
+  initialEmail?: string;
 }
 
-const ContactForm = ({ leadId, onSuccess }: ContactFormProps) => {
+const ContactForm = ({ leadId, onSuccess, initialEmail }: ContactFormProps) => {
   const [contactData, setContactData] = useState<ContactData>({
     nome: "",
     cognome: "",
-    email: "",
+    email: initialEmail || "",
     telefono: "",
     indirizzo: ""
   });
@@ -206,6 +207,11 @@ const ContactForm = ({ leadId, onSuccess }: ContactFormProps) => {
 
           <div>
             <Label htmlFor="email">Email *</Label>
+            {initialEmail && (
+              <p className="text-xs text-muted-foreground mb-1">
+                ✓ Email fornita durante l'intervista
+              </p>
+            )}
             <div className="relative">
               <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
@@ -216,6 +222,7 @@ const ContactForm = ({ leadId, onSuccess }: ContactFormProps) => {
                 placeholder="tua@email.com"
                 className="pl-10"
                 required
+                readOnly={!!initialEmail}
               />
             </div>
           </div>

@@ -41,6 +41,11 @@ interface LeadData {
     telefono: string;
     indirizzo: string;
   };
+  interview_data?: {
+    client_info?: {
+      email?: string;
+    };
+  };
 }
 
 const Capitolato = () => {
@@ -371,6 +376,7 @@ const Capitolato = () => {
               <ContactForm 
                 leadId={leadId!} 
                 onSuccess={handleContactSuccess}
+                initialEmail={leadData?.interview_data?.client_info?.email}
               />
             </Card>
           </div>
