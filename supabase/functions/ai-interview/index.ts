@@ -28,7 +28,7 @@ function mapCapToRegione(cap: string | null): string | null {
   if (capNum >= 50000 && capNum <= 59999) return 'Toscana';
   if (capNum >= 6000 && capNum <= 6999) return 'Umbria';
   if (capNum >= 60000 && capNum <= 63999) return 'Marche';
-  if (capNum >= 00000 && capNum <= 5999) return 'Lazio';
+  if (capNum >= 0 && capNum <= 5999) return 'Lazio';
   if (capNum >= 65000 && capNum <= 67999) return 'Abruzzo';
   if (capNum >= 86000 && capNum <= 86999) return 'Molise';
   if (capNum >= 70000 && capNum <= 76999) return 'Puglia';
