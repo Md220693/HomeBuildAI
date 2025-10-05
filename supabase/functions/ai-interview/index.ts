@@ -270,10 +270,37 @@ ${scopeContext}`;
     const emailMatches = conversationOriginal.match(emailRegex);
     const detectedEmail = emailMatches ? emailMatches[emailMatches.length - 1] : null;
     
-    // Extract location (city + CAP) - use conversationOriginal to preserve case
-    const locationMatch = conversationOriginal.match(/([A-ZÀÈÉÌÒÙ][a-zàèéìòù\s'-]+(?:\s+[A-ZÀÈÉÌÒÙ]?[a-zàèéìòù\s'-]+)*),?\s*(\d{5})/);
-    const detectedCitta = locationMatch?.[1]?.trim() || null;
-    const detectedCap = locationMatch?.[2] || null;
+    // Helper: Normalize city name to Title Case
+    const normalizeCity = (city: string) => {
+      return city.trim()
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+    };
+
+    // Extract location (city + CAP) - ULTRA-ROBUST: case-insensitive multi-strategy
+    let detectedCitta: string | null = null;
+    let detectedCap: string | null = null;
+
+    // Strategy 1: City + CAP (case-insensitive, flexible spacing/comma)
+    const locationMatch = conversationOriginal.match(/([a-zàèéìòùáíóúäëïöüâêîôûçñ\s'-]{3,}),?\s*(\d{5})/i);
+    if (locationMatch) {
+      detectedCitta = normalizeCity(locationMatch[1]);
+      detectedCap = locationMatch[2];
+    }
+
+    // Strategy 2: If no city but CAP found, try phrase extraction
+    if (!detectedCitta) {
+      const capOnly = conversationOriginal.match(/\b(\d{5})\b/);
+      if (capOnly) {
+        detectedCap = capOnly[1];
+        // Try to find city before CAP
+        const cityBeforeCap = conversationOriginal.match(/([a-zàèéìòùáíóúäëïöüâêîôûçñ\s'-]{3,})\s*,?\s*\d{5}/i);
+        if (cityBeforeCap) {
+          detectedCitta = normalizeCity(cityBeforeCap[1]);
+        }
+      }
+    }
     
     // Extract nome and cognome from conversation
     const nomeMatch = conversationOriginal.match(/(?:nome|mi chiamo|sono)\s*[:\s]+([A-ZÀÈÉÌÒÙ][a-zàèéìòù]+)/i);
@@ -281,9 +308,14 @@ ${scopeContext}`;
     const detectedNome = nomeMatch?.[1]?.trim() || null;
     const detectedCognome = cognomeMatch?.[1]?.trim() || null;
     
-    console.log('🗺️ Location extracted:', { detectedCitta, detectedCap });
+    console.log('🗺️ Location extracted:', { 
+      detectedCitta, 
+      detectedCap, 
+      regione: mapCapToRegione(detectedCap),
+      normalized: detectedCitta ? `✅ "${detectedCitta}"` : '❌ not found'
+    });
     console.log('👤 Contact extracted:', { detectedNome, detectedCognome, detectedEmail });
-    console.log('📍 Conversation snippet:', conversationOriginal.substring(0, 300));
+    console.log('📍 RAW input sample:', conversationOriginal.substring(0, 300));
 
     // Detect partial scope from keywords
     const partialKeywords = [
