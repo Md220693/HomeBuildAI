@@ -1,4 +1,4 @@
-// v1.1.0 - Fixed truncation + premature completion (2025-10-05)
+// v1.1.2 - Refactored location extraction to force deploy (2025-10-05)
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
 
@@ -42,12 +42,56 @@ function mapCapToRegione(cap: string | null): string | null {
   return null;
 }
 
+// Helper: Extract location from USER messages only (not system prompt)
+function extractLocationFromUserMessages(messages: any[]): {
+  citta: string | null;
+  cap: string | null;
+} {
+  const normalizeCity = (city: string) => {
+    return city.trim()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
+
+  // Filter only USER messages (exclude system prompt and AI responses)
+  const userMessages = messages
+    .filter(m => m.role === 'user')
+    .map(m => m.content)
+    .join(' ');
+
+  let citta: string | null = null;
+  let cap: string | null = null;
+
+  // Strategy 1: City + CAP together (case-insensitive, flexible spacing)
+  const locationMatch = userMessages.match(/([a-zàèéìòùáíóúäëïöüâêîôûçñ\s'-]{3,}),?\s*(\d{5})/i);
+  if (locationMatch) {
+    citta = normalizeCity(locationMatch[1]);
+    cap = locationMatch[2];
+  }
+
+  // Strategy 2: If no city but CAP found, try phrase extraction
+  if (!citta) {
+    const capOnly = userMessages.match(/\b(\d{5})\b/);
+    if (capOnly) {
+      cap = capOnly[1];
+      // Try to find city before CAP
+      const cityBeforeCap = userMessages.match(/([a-zàèéìòùáíóúäëïöüâêîôûçñ\s'-]{3,})\s*,?\s*\d{5}/i);
+      if (cityBeforeCap) {
+        citta = normalizeCity(cityBeforeCap[1]);
+      }
+    }
+  }
+
+  return { citta, cap };
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const FUNCTION_VERSION = "1.1.1"; // Tracked in logs - Fixed CAP/città extraction bug
+const FUNCTION_VERSION = "1.1.2"; // Refactored location extraction - forced deploy
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -155,7 +199,7 @@ serve(async (req) => {
     }
 
     // FASE 1: Prompt DRASTICAMENTE SEMPLIFICATO per DeepSeek
-    let systemPrompt = `Tu sei un intervistatore AI per ristrutturazioni edilizie. [v1.1.1]
+    let systemPrompt = `Tu sei un intervistatore AI per ristrutturazioni edilizie. [v1.1.2]
 
 🎯 OBIETTIVO: Raccogliere informazioni per capitolato tecnico.
 
@@ -275,43 +319,8 @@ ${scopeContext}`;
     const emailMatches = conversationOriginal.match(emailRegex);
     const detectedEmail = emailMatches ? emailMatches[emailMatches.length - 1] : null;
     
-    // Helper: Normalize city name to Title Case
-    const normalizeCity = (city: string) => {
-      return city.trim()
-        .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join(' ');
-    };
-
-    // Extract location (city + CAP) - FIXED: Only search in USER messages (not system prompt)
-    let detectedCitta: string | null = null;
-    let detectedCap: string | null = null;
-
-    // Extract only USER messages (exclude system prompt and AI responses)
-    const userMessages = messages
-      .filter(m => m.role === 'user')
-      .map(m => m.content)
-      .join(' ');
-
-    // Strategy 1: City + CAP (case-insensitive, flexible spacing/comma)
-    const locationMatch = userMessages.match(/([a-zàèéìòùáíóúäëïöüâêîôûçñ\s'-]{3,}),?\s*(\d{5})/i);
-    if (locationMatch) {
-      detectedCitta = normalizeCity(locationMatch[1]);
-      detectedCap = locationMatch[2];
-    }
-
-    // Strategy 2: If no city but CAP found, try phrase extraction
-    if (!detectedCitta) {
-      const capOnly = userMessages.match(/\b(\d{5})\b/);
-      if (capOnly) {
-        detectedCap = capOnly[1];
-        // Try to find city before CAP
-        const cityBeforeCap = userMessages.match(/([a-zàèéìòùáíóúäëïöüâêîôûçñ\s'-]{3,})\s*,?\s*\d{5}/i);
-        if (cityBeforeCap) {
-          detectedCitta = normalizeCity(cityBeforeCap[1]);
-        }
-      }
-    }
+    // Extract location using helper function (v1.1.2 refactor)
+    const { citta: detectedCitta, cap: detectedCap } = extractLocationFromUserMessages(messages);
     
     // Extract nome and cognome from conversation
     const nomeMatch = conversationOriginal.match(/(?:nome|mi chiamo|sono)\s*[:\s]+([A-ZÀÈÉÌÒÙ][a-zàèéìòù]+)/i);
