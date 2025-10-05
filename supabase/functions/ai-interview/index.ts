@@ -91,8 +91,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const FUNCTION_VERSION = "1.1.2-stable"; // Refactored location extraction - forced deploy
-const DEPLOY_TIMESTAMP = "2025-10-05T17:00:00Z"; // Deploy tracking
+const FUNCTION_VERSION = "1.1.3-verified"; // Forced deploy with memory_mb parameter
+const DEPLOY_TIMESTAMP = "2025-10-05T18:30:00Z"; // Deploy tracking
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -103,7 +103,13 @@ serve(async (req) => {
   try {
     const { leadId, messages } = await req.json();
     
-    console.log(`🚀 ai-interview v${FUNCTION_VERSION} | Deploy: ${DEPLOY_TIMESTAMP} - Processing request for lead:`, leadId);
+    console.log(`
+🚀 ========================================
+🚀 ai-interview v${FUNCTION_VERSION}
+🚀 Deploy: ${DEPLOY_TIMESTAMP}
+🚀 Lead ID: ${leadId}
+🚀 ========================================
+    `);
     
     if (!leadId || !messages || !Array.isArray(messages)) {
       throw new Error('leadId and messages array are required');
