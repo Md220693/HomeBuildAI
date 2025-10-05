@@ -205,7 +205,7 @@ ${scopeContext}`;
       body: JSON.stringify({
         model: 'deepseek-chat',
         messages: apiMessages,
-        max_tokens: 500, // Increased to allow complete responses
+        max_tokens: 150, // Limite ristretto per domande brevi (max 30 parole)
         temperature: 0.3, // Lower temperature for more predictable responses
         stop: ['<!--'], // Only stop at completion tag
       }),
@@ -371,13 +371,18 @@ ${scopeContext}`;
     const userRefusedBudget = (lastUserMessage === 'no' || lastUserMessage === 'no grazie') && 
                                conversationLower.includes('budget');
     
-    // Fallback Level 3: Message count threshold with detected scope (6+ exchanges)
-    const messageThresholdReached = messageCount >= 12 && detectedRenovationScope !== 'unknown';
+    // Interview status logging
+    console.log('📊 Interview Status:', {
+      messageCount,
+      hasEmail: /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(conversationOriginal),
+      hasCityCAP: !!(detectedCitta && detectedCap),
+      hasScope: detectedRenovationScope !== 'unknown',
+      isMarkedComplete: isComplete
+    });
     
     console.log('🔍 Fallback analysis:', {
       hasCompletionPhrase,
       userRefusedBudget,
-      messageThresholdReached,
       messageCount,
       detectedScope: detectedRenovationScope
     });
@@ -405,8 +410,7 @@ ${scopeContext}`;
     // TRIGGER AUTO-COMPLETION if ANY fallback is met
     if (isComplete || 
         (detectedRenovationScope !== 'unknown' && hasCompletionPhrase) ||
-        userRefusedBudget ||
-        messageThresholdReached) {
+        userRefusedBudget) {
       console.log('💾 Saving interview completion data...');
       
       // Build comprehensive interview_data with location at root level
