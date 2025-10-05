@@ -47,6 +47,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const FUNCTION_VERSION = "1.1.0"; // Tracked in logs
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -55,6 +57,8 @@ serve(async (req) => {
 
   try {
     const { leadId, messages } = await req.json();
+    
+    console.log(`🚀 ai-interview v${FUNCTION_VERSION} - Processing request for lead:`, leadId);
     
     if (!leadId || !messages || !Array.isArray(messages)) {
       throw new Error('leadId and messages array are required');
