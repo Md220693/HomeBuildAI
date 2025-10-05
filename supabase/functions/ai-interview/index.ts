@@ -47,7 +47,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const FUNCTION_VERSION = "1.1.0"; // Tracked in logs
+const FUNCTION_VERSION = "1.1.1"; // Tracked in logs - Fixed CAP/città extraction bug
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -155,7 +155,7 @@ serve(async (req) => {
     }
 
     // FASE 1: Prompt DRASTICAMENTE SEMPLIFICATO per DeepSeek
-    let systemPrompt = `Tu sei un intervistatore AI per ristrutturazioni edilizie. [v1.1.0]
+    let systemPrompt = `Tu sei un intervistatore AI per ristrutturazioni edilizie. [v1.1.1]
 
 🎯 OBIETTIVO: Raccogliere informazioni per capitolato tecnico.
 
@@ -283,12 +283,18 @@ ${scopeContext}`;
         .join(' ');
     };
 
-    // Extract location (city + CAP) - ULTRA-ROBUST: case-insensitive multi-strategy
+    // Extract location (city + CAP) - FIXED: Only search in USER messages (not system prompt)
     let detectedCitta: string | null = null;
     let detectedCap: string | null = null;
 
+    // Extract only USER messages (exclude system prompt and AI responses)
+    const userMessages = messages
+      .filter(m => m.role === 'user')
+      .map(m => m.content)
+      .join(' ');
+
     // Strategy 1: City + CAP (case-insensitive, flexible spacing/comma)
-    const locationMatch = conversationOriginal.match(/([a-zàèéìòùáíóúäëïöüâêîôûçñ\s'-]{3,}),?\s*(\d{5})/i);
+    const locationMatch = userMessages.match(/([a-zàèéìòùáíóúäëïöüâêîôûçñ\s'-]{3,}),?\s*(\d{5})/i);
     if (locationMatch) {
       detectedCitta = normalizeCity(locationMatch[1]);
       detectedCap = locationMatch[2];
@@ -296,11 +302,11 @@ ${scopeContext}`;
 
     // Strategy 2: If no city but CAP found, try phrase extraction
     if (!detectedCitta) {
-      const capOnly = conversationOriginal.match(/\b(\d{5})\b/);
+      const capOnly = userMessages.match(/\b(\d{5})\b/);
       if (capOnly) {
         detectedCap = capOnly[1];
         // Try to find city before CAP
-        const cityBeforeCap = conversationOriginal.match(/([a-zàèéìòùáíóúäëïöüâêîôûçñ\s'-]{3,})\s*,?\s*\d{5}/i);
+        const cityBeforeCap = userMessages.match(/([a-zàèéìòùáíóúäëïöüâêîôûçñ\s'-]{3,})\s*,?\s*\d{5}/i);
         if (cityBeforeCap) {
           detectedCitta = normalizeCity(cityBeforeCap[1]);
         }
@@ -320,6 +326,7 @@ ${scopeContext}`;
       normalized: detectedCitta ? `✅ "${detectedCitta}"` : '❌ not found'
     });
     console.log('👤 Contact extracted:', { detectedNome, detectedCognome, detectedEmail });
+    console.log('📍 USER messages only:', userMessages.substring(0, 200));
     console.log('📍 RAW input sample:', conversationOriginal.substring(0, 300));
 
     // Detect partial scope from keywords
