@@ -155,7 +155,7 @@ serve(async (req) => {
     }
 
     // FASE 1: Prompt DRASTICAMENTE SEMPLIFICATO per DeepSeek
-    let systemPrompt = `Tu sei un intervistatore AI per ristrutturazioni edilizie.
+    let systemPrompt = `Tu sei un intervistatore AI per ristrutturazioni edilizie. [v1.1.0]
 
 🎯 OBIETTIVO: Raccogliere informazioni per capitolato tecnico.
 
