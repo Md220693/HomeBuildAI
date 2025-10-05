@@ -1,5 +1,9 @@
 project_id = "wncvvncldryfqqvpmnor"
 
+[functions.ai-interview]
+verify_jwt = false
+import_map = "./import_map.json"
+
 [functions.invite-admin]
 verify_jwt = false
 
