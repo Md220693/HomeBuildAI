@@ -329,7 +329,9 @@ const AdminLeadsTable = () => {
                         {getStatusBadge(lead.status)}
                       </TableCell>
                       <TableCell>
-                        {lead.capitolato_data ? (
+                        {(lead.status === 'interview_completed' || 
+                          lead.status === 'capitolato_generated' || 
+                          lead.capitolato_data) ? (
                           <Button
                             variant="outline"
                             size="sm"

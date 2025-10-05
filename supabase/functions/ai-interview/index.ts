@@ -259,20 +259,31 @@ ${scopeContext}`;
     console.log('Checking interview completion:', { isComplete });
 
     // ALWAYS analyze conversation for scope detection (not just when complete)
-    const conversationText = messages.map((m: any) => m.content).join(' ').toLowerCase();
+    const conversationOriginal = messages.map((m: any) => m.content).join(' ');
+    const conversationText = conversationOriginal.toLowerCase();
     let detectedRenovationScope = 'unknown';
     let detectedTargetRooms: string[] = [];
     let isMicroIntervention = false;
     
     // Extract email from conversation
     const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-    const emailMatches = conversationText.match(emailRegex);
+    const emailMatches = conversationOriginal.match(emailRegex);
     const detectedEmail = emailMatches ? emailMatches[emailMatches.length - 1] : null;
     
-    // Extract location (city + CAP) with more robust pattern
-    const locationMatch = conversationText.match(/([a-zàèéìòù\s'-]+),?\s*(\d{5})/i);
-    const citta = locationMatch?.[1]?.trim() || null;
-    const cap = locationMatch?.[2] || null;
+    // Extract location (city + CAP) - use conversationOriginal to preserve case
+    const locationMatch = conversationOriginal.match(/([A-ZÀÈÉÌÒÙ][a-zàèéìòù\s'-]+(?:\s+[A-ZÀÈÉÌÒÙ]?[a-zàèéìòù\s'-]+)*),?\s*(\d{5})/);
+    const detectedCitta = locationMatch?.[1]?.trim() || null;
+    const detectedCap = locationMatch?.[2] || null;
+    
+    // Extract nome and cognome from conversation
+    const nomeMatch = conversationOriginal.match(/(?:nome|mi chiamo|sono)\s*[:\s]+([A-ZÀÈÉÌÒÙ][a-zàèéìòù]+)/i);
+    const cognomeMatch = conversationOriginal.match(/cognome\s*[:\s]+([A-ZÀÈÉÌÒÙ][a-zàèéìòù]+)/i);
+    const detectedNome = nomeMatch?.[1]?.trim() || null;
+    const detectedCognome = cognomeMatch?.[1]?.trim() || null;
+    
+    console.log('🗺️ Location extracted:', { detectedCitta, detectedCap });
+    console.log('👤 Contact extracted:', { detectedNome, detectedCognome, detectedEmail });
+    console.log('📍 Conversation snippet:', conversationOriginal.substring(0, 300));
 
     // Detect partial scope from keywords
     const partialKeywords = [
@@ -340,7 +351,7 @@ ${scopeContext}`;
     });
     
     // ====== PRE-COMPLETION VALIDATION (CRITICAL) ======
-    const hasValidLocation = cap && citta;
+    const hasValidLocation = detectedCap && detectedCitta;
     const hasValidEmail = detectedEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(detectedEmail);
     
     // If AI wants to complete but essential data is missing, force re-prompt
@@ -368,13 +379,15 @@ ${scopeContext}`;
       
       // Build comprehensive interview_data with location at root level
       const interviewData = {
-        location: cap ? `${citta}, ${cap}` : 'Non specificato',  // Root field for backward compatibility
+        location: detectedCap ? `${detectedCitta}, ${detectedCap}` : 'Non specificato',
         client_info: { 
-          email: detectedEmail 
+          email: detectedEmail,
+          nome: detectedNome,
+          cognome: detectedCognome
         },
         project_details: {
-          city: citta,
-          postal_code: cap,
+          city: detectedCitta,
+          postal_code: detectedCap,
           renovation_scope: detectedRenovationScope,
           target_rooms: detectedTargetRooms,
           is_micro_intervention: isMicroIntervention
@@ -408,19 +421,25 @@ ${scopeContext}`;
         conversationalResponse = aiResponse.substring(0, tagIndex).trim();
       }
 
-      // Update lead with interview completion + geographical data
+      // Update lead with interview completion + geographical data + contact info
       const { error: updateError } = await supabase
         .from('leads')
         .update({
           status: 'interview_completed',
+          user_contact: {
+            nome: detectedNome,
+            cognome: detectedCognome,
+            email: detectedEmail,
+            telefono: null,
+            indirizzo: detectedCitta && detectedCap ? `${detectedCitta}, ${detectedCap}` : null
+          },
           renovation_scope: detectedRenovationScope,
           target_rooms: detectedTargetRooms.length > 0 ? detectedTargetRooms : null,
           scope_json: scopeData,
           interview_data: interviewData,
-          // NEW: Geographical mapping
-          cap: cap,
-          citta: citta,
-          regione: mapCapToRegione(cap)
+          cap: detectedCap,
+          citta: detectedCitta,
+          regione: mapCapToRegione(detectedCap)
         })
         .eq('id', leadId);
 
