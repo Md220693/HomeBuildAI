@@ -105,7 +105,7 @@ serve(async (req) => {
     
     console.log('Final scope decision:', { renovationScope, targetRooms, isMicroIntervention });
     
-    // Build SPECIFIC prompt based on intervention type
+    // Fix #4: Enhanced scopeContext for FULL renovations
     let scopeContext = '';
     if (isMicroIntervention) {
       const room = targetRooms.length > 0 ? targetRooms[0] : 'ambiente';
@@ -143,13 +143,56 @@ NON GENERARE ristrutturazione completa da 60k-90k!`;
 RISTRUTTURAZIONE PARZIALE - Solo ${targetRooms.join(', ')}:
 - Genera capitoli SOLO per ${targetRooms.join(', ')}
 - NON includere altri ambienti
-- Stima proporzionata allo scope limitato
+- Stima proporzionata allo scope limitato (€3.000-15.000 a seconda complessità)
+`;
+    } else if (renovationScope === 'full') {
+      scopeContext = `
+🏠 RISTRUTTURAZIONE COMPLETA - INTERA CASA:
+
+ISTRUZIONI CRITICHE per CAPITOLATO COMPLETO:
+
+1️⃣ Genera TUTTI i capitoli necessari per casa completa:
+   • Demolizioni generali (rimozione pavimenti, rivestimenti, sanitari, mobili)
+   • Impianti elettrici completi (quadri, punti luce, prese per TUTTI gli ambienti)
+   • Impianti idraulici e termici completi (collettori, tubazioni, sanitari)
+   • Murature e tramezzature (eventuali modifiche layout)
+   • Massetti e sottofondi (per TUTTA la metratura)
+   • Pavimenti (per TUTTI gli ambienti dell'immobile)
+   • Serramenti interni (porte per tutte le stanze)
+   • Pitturazioni e finiture (TUTTE le pareti e soffitti)
+   • Opere accessorie (battiscopa, accessori, pulizie)
+
+2️⃣ Quantità PROPORZIONATE alla metratura TOTALE:
+   - Esempio 120mq: demolizioni 120mq, pavimenti 120mq, pitturazioni ~300mq pareti
+   - NON limitarti a bagno/cucina se la casa è intera!
+
+3️⃣ STIMA REALISTICA per ristrutturazione completa:
+   - Range standard: €500-750/mq (esempio 120mq → €60.000-90.000)
+   - Adatta in base a qualità materiali e complessità lavori
+   - Confidence 0.70-0.80 per interventi completi
+
+4️⃣ NON sottostimare - Una casa completa richiede:
+   - Demolizioni totali
+   - Rifacimento completo impianti
+   - Nuovi pavimenti ovunque
+   - Nuove porte interne
+   - Pitturazioni complete
+
+ESEMPIO STIMA per 120mq casa completa:
+{
+  "stima_costi": {
+    "min_euro": 60000,
+    "max_euro": 90000,
+    "confidence": 0.75
+  }
+}
 `;
     } else {
       scopeContext = `
-RISTRUTTURAZIONE COMPLETA:
-- Include tutti ambienti dell'immobile
-- Demolizioni, impianti, finiture complete
+RISTRUTTURAZIONE - Scope da determinare:
+- Analizza dati progetto per capire se completa o parziale
+- Genera capitoli appropriati
+- Stima proporzionata allo scope rilevato
 `;
     }
 

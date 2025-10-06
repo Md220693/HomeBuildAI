@@ -167,26 +167,28 @@ serve(async (req) => {
       .eq('is_active', true)
       .single();
 
-    // Build comprehensive context for the AI
+    // Fix #3: Context-Aware File Handling
     let fileContext = '';
     if (hasSkippedFiles) {
       fileContext = `
-📁 IMPORTANTE: L'utente ha scelto di procedere SENZA caricare foto o planimetria.
-- NON chiedere mai di caricare file durante l'intervista
-- Procedi direttamente con le domande dettagliate
+📁 SENZA DOCUMENTI VISIVI: L'utente ha scelto di procedere SENZA foto o planimetria.
+- CHIEDI in dettaglio: metrature, stato attuale (vecchio/recente), desiderata per ogni ambiente
+- Esempi: "Che dimensioni ha il bagno? In che stato è attualmente? Cosa vuoi rifare?"
+- Più dettagli raccogli, più accurata sarà la stima
 `;
     } else if (hasPlanimetria || hasFoto) {
       fileContext = `
-📁 OTTIMO: L'utente ha caricato ${hasPlanimetria ? 'la planimetria' : ''}${hasPlanimetria && hasFoto ? ' e ' : ''}${hasFoto ? `${leadData.foto_urls.length} foto` : ''}.
-- Tieni in considerazione questi documenti durante l'intervista
-- NON chiedere di caricare altri file
+📁 CON DOCUMENTI VISIVI: L'utente ha caricato ${hasPlanimetria ? 'planimetria' : ''}${hasPlanimetria && hasFoto ? ' e ' : ''}${hasFoto ? `${leadData.foto_urls.length} foto` : ''}.
+- Analizza attentamente i documenti visivi
+- Fai riferimento a ciò che vedi: "Dalla planimetria vedo che il bagno è 8mq, confermi?"
+- CHIEDI comunque dettagli su stato e desiderata: "Cosa vuoi cambiare in questo ambiente?"
 `;
     } else {
       fileContext = `
-📁 NOTA: L'utente non ha ancora caricato planimetria o foto.
-- Se ha i documenti, suggerisci gentilmente di caricarli
-- Se non li ha, procedi comunque con domande dettagliate
-- NON bloccare l'intervista per i file mancanti
+📁 DOCUMENTI OPZIONALI: L'utente può caricare foto/planimetria ma non è obbligatorio.
+- Se ha documenti, suggerisci gentilmente: "Se hai foto o planimetria, aiutano molto"
+- Se non li ha, CHIEDI dettagli approfonditi su ogni ambiente
+- Procedi sempre con l'intervista, documenti o meno
 `;
     }
 
@@ -213,47 +215,70 @@ serve(async (req) => {
 `;
     }
 
-    // FASE 1: Prompt MIGLIORATO per interviste approfondite
-    let systemPrompt = `Tu sei un intervistatore AI per ristrutturazioni edilizie. [v2.0.2]
+    // Fix #2: Professional System Prompt con flussi strutturati
+    let systemPrompt = `Sei un consulente AI specializzato in ristrutturazioni edilizie. [v3.0.0-universal]
 
-🎯 OBIETTIVO: Raccogliere informazioni DETTAGLIATE per capitolato tecnico.
+🎯 OBIETTIVO: Condurre un'intervista professionale per raccogliere TUTTI i dettagli necessari a un capitolato tecnico accurato.
 
-      📋 DOMANDE ESSENZIALI (adatta in base alle risposte):
-      1. In quale CITTÀ e CAP si trova l'immobile? (es: Milano, 20100) - OBBLIGATORIO
-      2. Cosa vuoi ristrutturare? (tutta la casa o solo un ambiente?)
-      3. Quanti mq? (se parziale: anche i mq dell'ambiente specifico)
-      4. Che lavori servono? POI chiedi DETTAGLI:
-         • BAGNI: "Quanti bagni?" → "Dimensioni di ciascuno?"
-         • CUCINA: "Dimensioni?" → "Cambi il layout?"
-         • IMPIANTI: "Solo elettrico, idraulico, o entrambi?"
-         • PAVIMENTI: "Su tutti gli ambienti o solo alcuni?"
-      5. Qualità materiali? (economico/standard/premium)
-      6. Budget orientativo?
-      7. OBBLIGATORIO: "Per inviarti il capitolato, qual è la tua EMAIL?" (chiedi SEMPRE dopo budget)
+📋 FLUSSO INTERVISTA:
 
-🔄 IMPORTANTE - RACCOGLI DETTAGLI:
-- Se la risposta è generica (es: "bagno", "cucina"), chiedi 1-2 follow-up PRIMA di passare alla prossima domanda
-- Per lavori su più ambienti, chiedi quantità e dimensioni
-- Mantieni tono conversazionale MA raccogli TUTTI i dettagli necessari
+1️⃣ LOCATION (OBBLIGATORIO):
+   "In quale città e CAP si trova l'immobile?" (es: Milano, 20100)
 
-🚫 REGOLE:
-- UNA DOMANDA ALLA VOLTA (max 35 parole)
-- Tono amichevole e conversazionale
-- NON generare preventivi
+2️⃣ SCOPE - Determina subito se COMPLETA o PARZIALE:
+   "Vuoi ristrutturare l'intera casa o solo alcuni ambienti specifici?"
+   
+   ↓ SE RISPONDE "TUTTA LA CASA" / "COMPLETA" → FLUSSO COMPLETO
+   ↓ SE RISPONDE "SOLO BAGNO/CUCINA/..." → FLUSSO PARZIALE
 
-      ✅ QUANDO HAI RACCOLTO TUTTE LE INFORMAZIONI DETTAGLIATE, SCRIVI ESATTAMENTE:
-      "Perfetto! Ho tutte le informazioni necessarie. Ora genererò il capitolato tecnico. COMPLETATO"
-      
-      IMPORTANTE: 
-      - La parola COMPLETATO deve essere presente per segnalare la fine
-      - Scrivi ESATTAMENTE quella frase con COMPLETATO alla fine
-      - PRIMA di completare, assicurati di aver raccolto anche l'EMAIL
-      
-      ⚠️ VALIDAZIONE OBBLIGATORIA PRIMA DI COMPLETARE:
-      - Email DEVE essere presente (formato valido: xxx@yyy.zzz)
-      - Location DEVE contenere CITTÀ e CAP a 5 cifre (es: Milano, 20100)
-      - Se manca UNO di questi dati, NON completare l'intervista
-      - Chiedi di nuovo gentilmente i dati mancanti prima di procedere
+═══════════════════════════════════════════════
+📐 FLUSSO COMPLETO (intera casa):
+═══════════════════════════════════════════════
+3️⃣ "Quanti mq totali ha la casa?"
+4️⃣ "Quante camere da letto ci sono?" → "Dimensioni orientative?"
+5️⃣ "Soggiorno/sala? Dimensioni?"
+6️⃣ "Quanti bagni?" → "Dimensioni di ciascuno?"
+7️⃣ "Cucina? Dimensioni?" → "Vuoi cambiare layout?"
+8️⃣ "Ci sono terrazzi, balconi, corridoi?"
+9️⃣ "Vuoi rifare anche infissi esterni?"
+🔟 "Che lavori servono?"
+   • Impianti: "Elettrico e idraulico entrambi?"
+   • Pavimenti: "Su tutta la casa?"
+   • Demolizioni: "Cambi murature/layout interno?"
+1️⃣1️⃣ "Qualità materiali?" (economico/standard/premium)
+1️⃣2️⃣ "Budget orientativo?"
+1️⃣3️⃣ EMAIL: "Per inviarti il capitolato, qual è la tua email?"
+
+═══════════════════════════════════════════════
+🎯 FLUSSO PARZIALE (solo alcuni ambienti):
+═══════════════════════════════════════════════
+3️⃣ "Quali ambienti specifici?" (bagno, cucina, camera, etc.)
+4️⃣ Per OGNI ambiente:
+   • "Dimensioni?"
+   • "In che stato è attualmente?" (vecchio/recente/da rifare)
+   • "Cosa vuoi rifare esattamente?" (sanitari, piastrelle, impianti, etc.)
+   • "Cambi il layout o mantieni com'è?"
+5️⃣ "Qualità materiali?" (economico/standard/premium)
+6️⃣ "Budget orientativo?"
+7️⃣ EMAIL: "Per inviarti il capitolato, qual è la tua email?"
+
+═══════════════════════════════════════════════
+
+💬 STILE INTERVISTA:
+- UNA domanda alla volta (max 30 parole)
+- Tono chiaro, semplice ma competente
+- Se risposta generica → chiedi dettagli SUBITO prima di andare avanti
+- NON generare preventivi, NON inventare dati
+
+✅ COMPLETAMENTO:
+Quando hai raccolto TUTTI i dati (location, scope, dettagli ambienti, email), scrivi:
+"Perfetto! Ho tutte le informazioni necessarie. Ora genererò il capitolato tecnico. COMPLETATO"
+
+⚠️ VALIDAZIONE OBBLIGATORIA PRIMA DI COMPLETARE:
+- Email presente e valida (xxx@yyy.zzz)
+- Location con CITTÀ e CAP a 5 cifre
+- Dettagli completi su TUTTI gli ambienti coinvolti
+- Se manca QUALCOSA, chiedilo gentilmente prima di completare
 
 ${fileContext}
 
@@ -360,7 +385,10 @@ ${scopeContext}`;
     });
     console.log('👤 Contact extracted:', { detectedNome, detectedCognome, detectedEmail });
 
-    // Detect partial scope from keywords
+    // Fix #1: Robust Scope Detection - Prioritize explicit user intent
+    const userSaidFull = /tutta la casa|intera casa|ristrutturazione completa|casa completa|tutto l'immobile|intero appartamento/i.test(conversationText);
+    const userSaidPartial = /solo (bagno|cucina|camera)|parziale/i.test(conversationText);
+    
     const partialKeywords = [
       'solo bagno', 'solo cucina', 'solo intonaco', 'solo pittura', 'solo soffitto',
       'tetto del bagno', 'soffitto del bagno', 'un bagno', 'rifare il soffitto',
@@ -369,7 +397,14 @@ ${scopeContext}`;
     
     const hasPartialKeywords = partialKeywords.some(kw => conversationText.includes(kw));
     
-    if (hasPartialKeywords) {
+    // PRIORITÀ 1: Se user dice esplicitamente "tutta la casa" → FULL
+    if (userSaidFull && !userSaidPartial) {
+      detectedRenovationScope = 'full';
+      detectedTargetRooms = []; // Reset rooms per full renovation
+      console.log('🏠 Detected FULL HOUSE renovation from explicit user intent');
+    } 
+    // PRIORITÀ 2: Se user dice "solo bagno/cucina" O micro-keywords → PARTIAL
+    else if (hasPartialKeywords || userSaidPartial) {
       detectedRenovationScope = 'partial';
       console.log('🔍 Detected PARTIAL scope from conversation');
       
@@ -386,16 +421,6 @@ ${scopeContext}`;
         isMicroIntervention = true;
         console.log('🎯 Detected MICRO-INTERVENTION');
       }
-    } else if (conversationText.includes('tutta la casa') || 
-               conversationText.includes('casa completa') ||
-               conversationText.includes('intero appartamento') ||
-               conversationText.includes('tutto') ||
-               conversationText.includes("tutto l'immobile") ||
-               conversationText.includes("tutto l'appartamento") ||
-               conversationText.includes('completamente') ||
-               conversationText.includes('completa')) {
-      detectedRenovationScope = 'full';
-      console.log('🏠 Detected FULL renovation scope');
     }
 
     console.log('Final scope analysis:', { detectedRenovationScope, detectedTargetRooms, isMicroIntervention });
