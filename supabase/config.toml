@@ -5,6 +5,11 @@ verify_jwt = false
 import_map = "./import_map.json"
 memory_mb = 512
 
+[functions.ai-interview-v2]
+verify_jwt = false
+import_map = "./import_map.json"
+memory_mb = 512
+
 [functions.invite-admin]
 verify_jwt = false
 

@@ -96,7 +96,7 @@ const Interview = () => {
     setResponseTimeout(timeoutId);
 
     try {
-      const { data, error } = await supabase.functions.invoke('ai-interview', {
+      const { data, error } = await supabase.functions.invoke('ai-interview-v2', {
         body: {
           leadId,
           messages: newMessages
