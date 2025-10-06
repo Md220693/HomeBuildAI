@@ -37,27 +37,32 @@ serve(async (req) => {
       throw new Error('System prompt not found or inactive');
     }
 
-    // Get lead data with scope
+    // Get lead data with interview_data
     const { data: lead, error: leadError } = await supabase
       .from('leads')
-      .select('scope_json, renovation_scope, target_rooms')
+      .select('interview_data, renovation_scope, target_rooms')
       .eq('id', leadId)
       .single();
 
-    if (leadError || !lead?.scope_json) {
+    if (leadError || !lead?.interview_data) {
       throw new Error('Lead data not found or incomplete');
     }
 
     // FASE 3: ROBUST scope detection with micro-intervention logic
-    let renovationScope = lead.renovation_scope || 'unknown';
-    let targetRooms = lead.target_rooms || [];
-    let isMicroIntervention = false;
+    // Prioritize data from interview_data, fallback to dedicated columns
+    let renovationScope = lead.interview_data?.renovation_scope || 
+                          lead.renovation_scope || 
+                          'unknown';
+    let targetRooms = lead.interview_data?.target_rooms || 
+                      lead.target_rooms || 
+                      [];
+    let isMicroIntervention = lead.interview_data?.is_micro_intervention || false;
     
     // Analyze ALL available data for scope detection
     const allDataText = JSON.stringify({
-      scope_json: lead.scope_json,
-      renovation_scope: lead.renovation_scope,
-      target_rooms: lead.target_rooms
+      interview_data: lead.interview_data,
+      renovation_scope: renovationScope,
+      target_rooms: targetRooms
     }).toLowerCase();
     
     console.log('Analyzing scope from data:', allDataText.substring(0, 300));
@@ -154,7 +159,18 @@ RISTRUTTURAZIONE COMPLETA:
     }
 
     // Prepare prompt with lead data and scope context
-    const scopeData = JSON.stringify(lead.scope_json, null, 2);
+    const scopeData = JSON.stringify({
+      conversation: lead.interview_data.conversation || [],
+      location: lead.interview_data.citta && lead.interview_data.cap 
+        ? `${lead.interview_data.citta}, ${lead.interview_data.cap}` 
+        : 'Location not specified',
+      renovation_scope: renovationScope,
+      target_rooms: targetRooms,
+      is_micro_intervention: isMicroIntervention,
+      quality_tier: lead.interview_data.quality_tier || 'standard',
+      additional_notes: lead.interview_data.notes || ''
+    }, null, 2);
+    
     const fullPrompt = `${promptData.content}
 
 ${scopeContext}
