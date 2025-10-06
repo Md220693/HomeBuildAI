@@ -43,7 +43,7 @@ function mapCapToRegione(cap: string | null): string | null {
 }
 
 // Helper: Extract location from USER messages only (not system prompt)
-// v2.0.1-hotfix: Fixed location extraction by searching from most recent message
+// v2.0.2: Enhanced flexible location extraction (supports multiple formats)
 function extractLocationFromUserMessages(messages: any[]): {
   citta: string | null;
   cap: string | null;
@@ -67,18 +67,27 @@ function extractLocationFromUserMessages(messages: any[]): {
   for (const msg of userMessages) {
     const content = msg.content;
 
-    // Strategy 1: City + CAP together (case-insensitive, flexible spacing)
-    const locationMatch = content.match(/([a-zàèéìòùáíóúäëïöüâêîôûçñ\s'-]{3,}),?\s*(\d{5})/i);
-    if (locationMatch) {
-      citta = normalizeCity(locationMatch[1]);
-      cap = locationMatch[2];
+    // Strategy 1: City + CAP together (FLEXIBLE ORDER, case-insensitive)
+    // Matches: "Catania 95127", "95127 catania", "Catania, 95127", "catania,95127", etc.
+    const cityFirstMatch = content.match(/([a-zàèéìòùáíóúäëïöüâêîôûçñ\s'-]{3,})[,\s]*(\d{5})/i);
+    const capFirstMatch = content.match(/(\d{5})[,\s]*([a-zàèéìòùáíóúäëïöüâêîôûçñ\s'-]{3,})/i);
+    
+    if (cityFirstMatch) {
+      citta = normalizeCity(cityFirstMatch[1]);
+      cap = cityFirstMatch[2];
+      break; // ✅ Stop at first (most recent) match!
+    } else if (capFirstMatch) {
+      cap = capFirstMatch[1];
+      citta = normalizeCity(capFirstMatch[2]);
       break; // ✅ Stop at first (most recent) match!
     }
 
     // Strategy 2: CAP only (if city was in a previous message)
-    const capOnly = content.match(/\b(\d{5})\b/);
-    if (capOnly && !cap) {
-      cap = capOnly[1];
+    if (!cap) {
+      const capOnly = content.match(/\b(\d{5})\b/);
+      if (capOnly) {
+        cap = capOnly[1];
+      }
     }
   }
 
@@ -90,8 +99,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const FUNCTION_VERSION = "2.0.1-hotfix-location"; // Fixed location extraction (reverse search)
-const DEPLOY_TIMESTAMP = "2025-10-06T15:30:00Z"; // Deploy tracking
+const FUNCTION_VERSION = "2.0.2-complete-fix"; // All 3 fixes: DB columns, flexible location, better prompts
+const DEPLOY_TIMESTAMP = "2025-10-06T16:30:00Z"; // Deploy tracking
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -204,26 +213,35 @@ serve(async (req) => {
 `;
     }
 
-    // FASE 1: Prompt DRASTICAMENTE SEMPLIFICATO per DeepSeek
-    let systemPrompt = `Tu sei un intervistatore AI per ristrutturazioni edilizie. [v2.0.0]
+    // FASE 1: Prompt MIGLIORATO per interviste approfondite
+    let systemPrompt = `Tu sei un intervistatore AI per ristrutturazioni edilizie. [v2.0.2]
 
-🎯 OBIETTIVO: Raccogliere informazioni per capitolato tecnico.
+🎯 OBIETTIVO: Raccogliere informazioni DETTAGLIATE per capitolato tecnico.
 
-      📋 DOMANDE ESSENZIALI:
+      📋 DOMANDE ESSENZIALI (adatta in base alle risposte):
       1. In quale CITTÀ e CAP si trova l'immobile? (es: Milano, 20100) - OBBLIGATORIO
       2. Cosa vuoi ristrutturare? (tutta la casa o solo un ambiente?)
-      3. Quanti mq?
-      4. Che lavori servono?
+      3. Quanti mq? (se parziale: anche i mq dell'ambiente specifico)
+      4. Che lavori servono? POI chiedi DETTAGLI:
+         • BAGNI: "Quanti bagni?" → "Dimensioni di ciascuno?"
+         • CUCINA: "Dimensioni?" → "Cambi il layout?"
+         • IMPIANTI: "Solo elettrico, idraulico, o entrambi?"
+         • PAVIMENTI: "Su tutti gli ambienti o solo alcuni?"
       5. Qualità materiali? (economico/standard/premium)
       6. Budget orientativo?
       7. OBBLIGATORIO: "Per inviarti il capitolato, qual è la tua EMAIL?" (chiedi SEMPRE dopo budget)
 
+🔄 IMPORTANTE - RACCOGLI DETTAGLI:
+- Se la risposta è generica (es: "bagno", "cucina"), chiedi 1-2 follow-up PRIMA di passare alla prossima domanda
+- Per lavori su più ambienti, chiedi quantità e dimensioni
+- Mantieni tono conversazionale MA raccogli TUTTI i dettagli necessari
+
 🚫 REGOLE:
-- UNA DOMANDA ALLA VOLTA (max 30 parole)
+- UNA DOMANDA ALLA VOLTA (max 35 parole)
 - Tono amichevole e conversazionale
 - NON generare preventivi
 
-      ✅ QUANDO HAI RACCOLTO TUTTE LE 7 INFORMAZIONI ESSENZIALI, SCRIVI ESATTAMENTE:
+      ✅ QUANDO HAI RACCOLTO TUTTE LE INFORMAZIONI DETTAGLIATE, SCRIVI ESATTAMENTE:
       "Perfetto! Ho tutte le informazioni necessarie. Ora genererò il capitolato tecnico. COMPLETATO"
       
       IMPORTANTE: 
@@ -436,11 +454,14 @@ ${scopeContext}`;
     if ((isComplete || hasCompletionPhrase) && hasValidEmail && hasValidLocation) {
       console.log('✅ INTERVIEW VALIDATED AND COMPLETED');
       
-      // Update the lead in database
+      // Update the lead in database - SAVE TO DEDICATED COLUMNS ✅
       const { error: updateError } = await supabase
         .from('leads')
         .update({
           status: 'interview_completed',
+          citta: detectedCitta,                    // ✅ CRITICO: Salva in colonna dedicata
+          cap: detectedCap,                        // ✅ CRITICO: Salva in colonna dedicata
+          regione: mapCapToRegione(detectedCap),   // ✅ CRITICO: Salva in colonna dedicata
           interview_data: {
             nome: detectedNome,
             cognome: detectedCognome,
