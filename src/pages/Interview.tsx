@@ -130,11 +130,10 @@ const Interview = () => {
           description: "Tutte le informazioni sono state raccolte. Procediamo con la generazione del capitolato.",
         });
         
-        // Navigate to next step after 2 seconds
+        // Navigate to contact verification before generating capitolato
         setTimeout(() => {
-          // Navigate to capitolato generation page
-          navigate(`/capitolato?leadId=${leadId}`);
-        }, 3000);
+          navigate(`/contact-verification?leadId=${leadId}`);
+        }, 2000);
       }
 
     } catch (error) {
@@ -187,7 +186,7 @@ const Interview = () => {
       });
       
       setTimeout(() => {
-        navigate(`/capitolato?leadId=${leadId}`);
+        navigate(`/contact-verification?leadId=${leadId}`);
       }, 2000);
       
     } catch (error) {

@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Upload from "./pages/Upload";
 import Interview from "./pages/Interview";
+import ContactVerification from "./pages/ContactVerification";
 import Capitolato from "./pages/Capitolato";
 import SupplierAuth from "./pages/SupplierAuth";
 import SupplierOnboarding from "./pages/SupplierOnboarding";
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/upload" element={<Upload />} />
           <Route path="/interview" element={<Interview />} />
+          <Route path="/contact-verification" element={<ContactVerification />} />
           <Route path="/capitolato" element={<Capitolato />} />
           
           {/* Supplier Routes */}

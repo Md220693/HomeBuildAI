@@ -90,8 +90,15 @@ const Capitolato = () => {
       }
 
       if (!data.capitolato_data) {
-        // Need to generate capitolato
-        await generateCapitolato();
+        // Capitolato should already be generated from contact verification
+        console.log("Capitolato not found - should have been generated after OTP");
+        toast({
+          variant: "destructive",
+          title: "Capitolato non trovato",
+          description: "Il capitolato deve essere generato prima. Completa prima la verifica contatti."
+        });
+        navigate('/');
+        return;
       } else {
         setLeadData({
           ...data,
