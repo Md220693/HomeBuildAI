@@ -43,6 +43,7 @@ function mapCapToRegione(cap: string | null): string | null {
 }
 
 // Helper: Extract location from USER messages only (not system prompt)
+// v2.0.1-hotfix: Fixed location extraction by searching from most recent message
 function extractLocationFromUserMessages(messages: any[]): {
   citta: string | null;
   cap: string | null;
@@ -54,32 +55,30 @@ function extractLocationFromUserMessages(messages: any[]): {
       .join(' ');
   };
 
-  // Filter only USER messages (exclude system prompt and AI responses)
+  // Filter only USER messages and REVERSE to search from most recent
   const userMessages = messages
     .filter(m => m.role === 'user')
-    .map(m => m.content)
-    .join(' ');
+    .reverse(); // 🎯 Search from most recent message first!
 
   let citta: string | null = null;
   let cap: string | null = null;
 
-  // Strategy 1: City + CAP together (case-insensitive, flexible spacing)
-  const locationMatch = userMessages.match(/([a-zàèéìòùáíóúäëïöüâêîôûçñ\s'-]{3,}),?\s*(\d{5})/i);
-  if (locationMatch) {
-    citta = normalizeCity(locationMatch[1]);
-    cap = locationMatch[2];
-  }
+  // Search in reverse order (most recent first)
+  for (const msg of userMessages) {
+    const content = msg.content;
 
-  // Strategy 2: If no city but CAP found, try phrase extraction
-  if (!citta) {
-    const capOnly = userMessages.match(/\b(\d{5})\b/);
-    if (capOnly) {
+    // Strategy 1: City + CAP together (case-insensitive, flexible spacing)
+    const locationMatch = content.match(/([a-zàèéìòùáíóúäëïöüâêîôûçñ\s'-]{3,}),?\s*(\d{5})/i);
+    if (locationMatch) {
+      citta = normalizeCity(locationMatch[1]);
+      cap = locationMatch[2];
+      break; // ✅ Stop at first (most recent) match!
+    }
+
+    // Strategy 2: CAP only (if city was in a previous message)
+    const capOnly = content.match(/\b(\d{5})\b/);
+    if (capOnly && !cap) {
       cap = capOnly[1];
-      // Try to find city before CAP
-      const cityBeforeCap = userMessages.match(/([a-zàèéìòùáíóúäëïöüâêîôûçñ\s'-]{3,})\s*,?\s*\d{5}/i);
-      if (cityBeforeCap) {
-        citta = normalizeCity(cityBeforeCap[1]);
-      }
     }
   }
 
@@ -91,8 +90,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const FUNCTION_VERSION = "2.0.0-stable"; // Fixed userMessages scope bug
-const DEPLOY_TIMESTAMP = "2025-10-06T12:00:00Z"; // Deploy tracking
+const FUNCTION_VERSION = "2.0.1-hotfix-location"; // Fixed location extraction (reverse search)
+const DEPLOY_TIMESTAMP = "2025-10-06T15:30:00Z"; // Deploy tracking
 
 serve(async (req) => {
   // Handle CORS preflight requests
