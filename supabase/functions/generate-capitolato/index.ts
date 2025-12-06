@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -20,12 +20,12 @@ serve(async (req) => {
       throw new Error('leadId is required');
     }
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  
+    const supabaseUrl = Deno.env.get('URL')!;
+    const supabaseKey = Deno.env.get('SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get capitolato prompt from database
+  
     const { data: promptData, error: promptError } = await supabase
       .from('ai_prompts')
       .select('content')
@@ -37,7 +37,7 @@ serve(async (req) => {
       throw new Error('System prompt not found or inactive');
     }
 
-    // Get lead data with interview_data
+  
     const { data: lead, error: leadError } = await supabase
       .from('leads')
       .select('interview_data, renovation_scope, target_rooms')
@@ -48,8 +48,7 @@ serve(async (req) => {
       throw new Error('Lead data not found or incomplete');
     }
 
-    // FASE 3: ROBUST scope detection with micro-intervention logic
-    // Prioritize data from interview_data, fallback to dedicated columns
+
     let renovationScope = lead.interview_data?.renovation_scope || 
                           lead.renovation_scope || 
                           'unknown';
@@ -58,7 +57,7 @@ serve(async (req) => {
                       [];
     let isMicroIntervention = lead.interview_data?.is_micro_intervention || false;
     
-    // Analyze ALL available data for scope detection
+  
     const allDataText = JSON.stringify({
       interview_data: lead.interview_data,
       renovation_scope: renovationScope,
@@ -67,7 +66,7 @@ serve(async (req) => {
     
     console.log('Analyzing scope from data:', allDataText.substring(0, 300));
     
-    // Detect partial renovation
+  
     const partialIndicators = [
       'solo bagno', 'solo cucina', 'solo intonaco', 'solo pittura',
       'partial', 'parziale', 'bagno', '6mq', 'soffitto', 'tetto'
@@ -79,7 +78,7 @@ serve(async (req) => {
         renovationScope = 'partial';
         console.log('🔍 Auto-detected PARTIAL scope');
         
-        // Extract room if not already set
+       
         if (targetRooms.length === 0) {
           if (allDataText.includes('bagno')) targetRooms = ['bagno'];
           else if (allDataText.includes('cucina')) targetRooms = ['cucina'];
@@ -88,7 +87,7 @@ serve(async (req) => {
       }
     }
     
-    // Detect MICRO-INTERVENTION (crucial for correct pricing)
+  
     const microKeywords = [
       'solo intonaco', 'solo pittura', 'intonacatura', 'tetto del bagno',
       'soffitto del bagno', 'micro', '6mq', '6 mq', 'piccola riparazione'
@@ -99,13 +98,13 @@ serve(async (req) => {
     
     if (hasMicroKeywords && !hasCompleteKeywords) {
       isMicroIntervention = true;
-      renovationScope = 'partial'; // Force partial if micro
+      renovationScope = 'partial';
       console.log('🎯 MICRO-INTERVENTION detected!');
     }
     
     console.log('Final scope decision:', { renovationScope, targetRooms, isMicroIntervention });
     
-    // Fix #4: Enhanced scopeContext for FULL renovations
+  
     let scopeContext = '';
     if (isMicroIntervention) {
       const room = targetRooms.length > 0 ? targetRooms[0] : 'ambiente';
@@ -201,7 +200,7 @@ RISTRUTTURAZIONE - Scope da determinare:
       throw new Error('DEEPSEEK_API_KEY is not configured');
     }
 
-    // Prepare prompt with lead data and scope context
+
     const scopeData = JSON.stringify({
       conversation: lead.interview_data.conversation || [],
       location: lead.interview_data.citta && lead.interview_data.cap 
@@ -223,7 +222,6 @@ ${scopeData}`;
 
     console.log('Generating capitolato for lead:', leadId, 'scope:', lead.renovation_scope);
 
-    // Call DeepSeek API
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -251,15 +249,15 @@ ${scopeData}`;
 
     console.log('DeepSeek response:', aiResponse);
 
-    // Parse response - extract user message and JSON data
+
     let capitolatoData;
     let userMessage = '';
     
     try {
-      // Look for the hidden JSON in the AI response
+
       const hiddenJsonMatch = aiResponse.match(/<!--CAPITOLATO_COMPLETE:\s*({[\s\S]*?})\s*-->/);
       if (!hiddenJsonMatch) {
-        // Fallback to old format for backward compatibility
+
         const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
           throw new Error('No JSON found in response');
@@ -267,7 +265,7 @@ ${scopeData}`;
         capitolatoData = JSON.parse(jsonMatch[0]);
         userMessage = '✅ Capitolato generato con successo!';
       } else {
-        // New format - extract both message and JSON
+
         const beforeHidden = aiResponse.split('<!--CAPITOLATO_COMPLETE:')[0].trim();
         userMessage = beforeHidden || '✅ Capitolato generato con successo!';
         capitolatoData = JSON.parse(hiddenJsonMatch[1]);
@@ -277,14 +275,12 @@ ${scopeData}`;
       throw new Error('Failed to parse capitolato data');
     }
 
-    // Validate required fields
     if (!capitolatoData.capitolato || !capitolatoData.stima_costi) {
       throw new Error('Invalid capitolato structure');
     }
 
     const { min_euro, max_euro, confidence } = capitolatoData.stima_costi;
 
-    // Update lead with capitolato data
     const { error: updateError } = await supabase
       .from('leads')
       .update({

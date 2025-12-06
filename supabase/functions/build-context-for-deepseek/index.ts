@@ -11,14 +11,14 @@ interface ContextRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseUrl = Deno.env.get('URL');
+    const supabaseServiceKey = Deno.env.get('SERVICE_ROLE_KEY');
 
     if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error('Missing required environment variables');
@@ -30,7 +30,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Building context for lead:', lead_id);
 
-    // Get lead data
+  
     const { data: lead, error: leadError } = await supabase
       .from('leads')
       .select('*')
@@ -41,13 +41,11 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(`Lead not found: ${leadError?.message}`);
     }
 
-    // Get AI settings
     const { data: settings } = await supabase
       .from('ai_settings')
       .select('*')
       .single();
 
-    // Get active prompts
     const { data: prompts } = await supabase
       .from('ai_prompts')
       .select('*')
@@ -59,12 +57,12 @@ const handler = async (req: Request): Promise<Response> => {
       pdf_template: prompts?.find(p => p.kind === 'user_template_pdf')?.content || ''
     };
 
-    // Extract location for pricing preview
+
     const location = lead.interview_data?.location || lead.user_contact?.city || 'Italia';
     const quality_tier = lead.interview_data?.quality_level || 'standard';
     const urgency = lead.interview_data?.urgency || 'normale';
 
-    // Get pricing preview
+  
     let pricingContext = null;
     try {
       const pricingResponse = await fetch(`${supabaseUrl}/functions/v1/calc-pricing-preview`, {
@@ -88,7 +86,6 @@ const handler = async (req: Request): Promise<Response> => {
       console.error('Error getting pricing preview:', error);
     }
 
-    // Get knowledge base context if RAG is enabled
     let kbContext: any[] = [];
     if (settings?.use_rag) {
       const { data: kbDocs } = await supabase
@@ -97,12 +94,12 @@ const handler = async (req: Request): Promise<Response> => {
         .limit(settings.max_neighbors || 5);
 
       if (kbDocs) {
-        // Simple keyword matching for relevant docs
+  
         const interviewText = JSON.stringify(lead.interview_data || {}).toLowerCase();
         
         kbContext = kbDocs
           .filter(doc => {
-            // Check if any tags or content keywords match the interview
+
             const docText = (doc.title + ' ' + doc.content_text).toLowerCase();
             const docWords = docText.split(/\s+/);
             
@@ -119,7 +116,6 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Get historical context if enabled
     let historicalContext = null;
     if (settings?.use_storici && pricingContext) {
       const { data: similarQuotes } = await supabase
@@ -142,7 +138,6 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Build final context for DeepSeek
     const context = {
       success: true,
       lead_id: lead_id,

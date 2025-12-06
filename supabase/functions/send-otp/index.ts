@@ -23,12 +23,12 @@ serve(async (req) => {
       throw new Error('leadId and phone number are required');
     }
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  
+    const supabaseUrl = Deno.env.get('URL')!;
+    const supabaseKey = Deno.env.get('SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Check debug mode from system settings
+    
     const { data: debugSetting } = await supabase
       .from('system_settings')
       .select('setting_value')
@@ -37,13 +37,13 @@ serve(async (req) => {
     
     const debugMode = debugSetting?.setting_value === 'true';
 
-    // Generate OTP
+    
     const otpCode = generateOTP();
     const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     console.log('Generated OTP for lead:', leadId, debugMode ? `Code: ${otpCode}` : 'Code: [hidden]');
 
-    // Save contact data and OTP to database
+
     const { error: updateError } = await supabase
       .from('leads')
       .update({
@@ -59,16 +59,16 @@ serve(async (req) => {
       throw new Error('Failed to save contact data');
     }
 
-    // Real SMS sending or debug mode
+
     let smsSuccess = false;
     
-    // Check for Twilio credentials
+
     const twilioSid = Deno.env.get('TWILIO_ACCOUNT_SID');
     const twilioToken = Deno.env.get('TWILIO_AUTH_TOKEN');
     const twilioPhone = Deno.env.get('TWILIO_PHONE_NUMBER');
     
     if (twilioSid && twilioToken && twilioPhone && !debugMode) {
-      // Send real SMS using Twilio
+
       try {
         const auth = btoa(`${twilioSid}:${twilioToken}`);
         const formData = new URLSearchParams();
@@ -98,7 +98,7 @@ serve(async (req) => {
         throw new Error('Failed to send SMS');
       }
     } else {
-      // Debug mode or no SMS provider configured
+  
       console.log(`SMS OTP ${debugMode ? 'DEBUG' : 'PLACEHOLDER'} - Send to ${contactData.telefono}: Your BuildHomeAI OTP is: ${otpCode}`);
       smsSuccess = true; // Always succeed in debug mode
     }
@@ -112,7 +112,6 @@ serve(async (req) => {
       message: debugMode ? 'OTP inviato (modalità debug)' : 'OTP inviato con successo'
     };
 
-    // Only include OTP in debug mode
     if (debugMode) {
       response.debug_otp = otpCode;
     }

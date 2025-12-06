@@ -54,20 +54,19 @@ interface AdminInviteRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseUrl = Deno.env.get('URL');
+    const supabaseServiceKey = Deno.env.get('SERVICE_ROLE_KEY');
 
     if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error('Missing required environment variables');
     }
 
-    // Initialize Supabase client with service role key
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { email, firstName, lastName, password }: AdminInviteRequest & { password?: string } = await req.json();
@@ -79,12 +78,12 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Use provided password or generate temporary one
+
     const userPassword = password || '1Cavallo!';
 
     console.log('Creating admin user for:', email);
 
-    // Create admin user with password
+
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
       password: userPassword,
@@ -109,7 +108,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Admin user created:', authData.user.id);
 
-    // Create profile with admin role
+
     const { error: profileError } = await supabase
       .from('profiles')
       .insert({
@@ -122,10 +121,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (profileError) {
       console.error('Profile error:', profileError);
-      // Don't fail here, profile might be created by trigger
+  
     }
 
-    // Add admin permissions
+
     const { error: permissionError } = await supabase
       .from('user_permissions')
       .insert({
@@ -140,7 +139,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Admin user created successfully');
 
-    // Send invitation email
+
     const emailResult = await sendEmailWithPostmark(
       email,
       'Invito a BuildHomeAI Admin Console',

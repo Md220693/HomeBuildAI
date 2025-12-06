@@ -1,15 +1,12 @@
-// v1.1.2 - Refactored location extraction to force deploy (2025-10-05)
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
 
-// Helper function to map CAP to Regione
 function mapCapToRegione(cap: string | null): string | null {
   if (!cap) return null;
   
   const capNum = parseInt(cap);
   if (isNaN(capNum)) return null;
   
-  // Map CAP ranges to regions (Italian postal code system)
   if (capNum >= 10000 && capNum <= 10999) return 'Piemonte';
   if (capNum >= 12000 && capNum <= 14999) return 'Piemonte';
   if (capNum >= 15000 && capNum <= 18999) return 'Piemonte';
@@ -42,7 +39,7 @@ function mapCapToRegione(cap: string | null): string | null {
   return null;
 }
 
-// Helper: Extract location from USER messages only (not system prompt)
+
 function extractLocationFromUserMessages(messages: any[]): {
   citta: string | null;
   cap: string | null;
@@ -54,7 +51,7 @@ function extractLocationFromUserMessages(messages: any[]): {
       .join(' ');
   };
 
-  // Filter only USER messages (exclude system prompt and AI responses)
+
   const userMessages = messages
     .filter(m => m.role === 'user')
     .map(m => m.content)
@@ -63,14 +60,14 @@ function extractLocationFromUserMessages(messages: any[]): {
   let citta: string | null = null;
   let cap: string | null = null;
 
-  // Strategy 1: City + CAP together (case-insensitive, flexible spacing)
+
   const locationMatch = userMessages.match(/([a-zàèéìòùáíóúäëïöüâêîôûçñ\s'-]{3,}),?\s*(\d{5})/i);
   if (locationMatch) {
     citta = normalizeCity(locationMatch[1]);
     cap = locationMatch[2];
   }
 
-  // Strategy 2: If no city but CAP found, try phrase extraction
+
   if (!citta) {
     const capOnly = userMessages.match(/\b(\d{5})\b/);
     if (capOnly) {
@@ -91,8 +88,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const FUNCTION_VERSION = "1.1.3-verified"; // Forced deploy with memory_mb parameter
-const DEPLOY_TIMESTAMP = "2025-10-05T18:30:00Z"; // Deploy tracking
+const FUNCTION_VERSION = "1.1.3-verified";
+const DEPLOY_TIMESTAMP = "2025-10-05T18:30:00Z";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -120,12 +117,12 @@ serve(async (req) => {
       throw new Error('DEEPSEEK_API_KEY is not configured');
     }
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+   
+    const supabaseUrl = Deno.env.get('URL')!;
+    const supabaseKey = Deno.env.get('SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get lead data to check for existing files, skip flag, and renovation scope
+  
     const { data: leadData, error: leadError } = await supabase
       .from('leads')
       .select('planimetria_url, foto_urls, skip_files, renovation_scope, target_rooms')
@@ -151,7 +148,7 @@ serve(async (req) => {
       target_rooms: targetRooms
     });
 
-    // Get system interview prompt from database
+   
     const { data: promptData, error: promptError } = await supabase
       .from('ai_prompts')
       .select('content')
@@ -159,7 +156,7 @@ serve(async (req) => {
       .eq('is_active', true)
       .single();
 
-    // Build comprehensive context for the AI
+  
     let fileContext = '';
     if (hasSkippedFiles) {
       fileContext = `
@@ -182,7 +179,7 @@ serve(async (req) => {
 `;
     }
 
-    // Build scope context
+   
     let scopeContext = '';
     if (renovationScope === 'partial' && targetRooms.length > 0) {
       scopeContext = `
@@ -205,7 +202,7 @@ serve(async (req) => {
 `;
     }
 
-    // FASE 1: Prompt DRASTICAMENTE SEMPLIFICATO per DeepSeek
+    
     let systemPrompt = `Tu sei un intervistatore AI per ristrutturazioni edilizie. [v1.1.2]
 
 🎯 OBIETTIVO: Raccogliere informazioni per capitolato tecnico.
@@ -243,7 +240,7 @@ ${fileContext}
 ${scopeContext}`;
 
 
-    // Prepare messages for DeepSeek API
+   
     const apiMessages = [
       { role: 'system', content: systemPrompt },
       ...messages
@@ -251,7 +248,7 @@ ${scopeContext}`;
 
     console.log('Calling DeepSeek API with messages:', apiMessages);
 
-    // Call DeepSeek API with balanced constraints
+  
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -261,9 +258,9 @@ ${scopeContext}`;
       body: JSON.stringify({
         model: 'deepseek-chat',
         messages: apiMessages,
-        max_tokens: 150, // Limite ristretto per domande brevi (max 30 parole)
-        temperature: 0.3, // Lower temperature for more predictable responses
-        stop: ['<!--'], // Only stop at completion tag
+        max_tokens: 150,
+        temperature: 0.3,
+        stop: ['<!--'],
       }),
     });
 
@@ -278,13 +275,13 @@ ${scopeContext}`;
 
     console.log('Raw DeepSeek response:', aiResponse);
     
-    // FIX FASE 4: Handle empty or invalid AI responses
+   
     if (!aiResponse || aiResponse.trim() === '') {
       console.error('❌ AI returned empty response, using fallback');
       aiResponse = "Mi scusi, ho avuto un problema tecnico. Per favore, può ripetere la sua ultima risposta?";
     }
     
-    // MINIMAL SAFETY CHECK: Only prevent extreme inappropriate responses
+   
     const shouldForceComplete = 
       aiResponse.length > 1000 && 
       /preventivo\s+vincolante|€\s*\d+[\d.,]*\s*-\s*€\s*\d+[\d.,]*/.test(aiResponse);
@@ -297,11 +294,11 @@ ${scopeContext}`;
 
     console.log('Processed AI response:', aiResponse);
 
-    // FASE 1: Check multiple completion signals
+   
     const responseText = aiResponse.trim();
     const responseLower = responseText.toLowerCase();
     
-    // Primary completion check
+ 
     const isComplete = responseText.includes('COMPLETATO') || 
                       responseText.includes('<!--INTERVIEW_COMPLETE-->') || 
                       responseText.includes('INTERVIEW_COMPLETE');
@@ -314,22 +311,21 @@ ${scopeContext}`;
 
     console.log('Checking interview completion:', { isComplete });
 
-    // ALWAYS analyze conversation for scope detection (not just when complete)
+  
     const conversationOriginal = messages.map((m: any) => m.content).join(' ');
     const conversationText = conversationOriginal.toLowerCase();
     let detectedRenovationScope = 'unknown';
     let detectedTargetRooms: string[] = [];
     let isMicroIntervention = false;
     
-    // Extract email from conversation
+ 
     const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
     const emailMatches = conversationOriginal.match(emailRegex);
     const detectedEmail = emailMatches ? emailMatches[emailMatches.length - 1] : null;
     
-    // Extract location using helper function (v1.1.2 refactor)
+  
     const { citta: detectedCitta, cap: detectedCap } = extractLocationFromUserMessages(messages);
     
-    // Extract nome and cognome from conversation
     const nomeMatch = conversationOriginal.match(/(?:nome|mi chiamo|sono)\s*[:\s]+([A-ZÀÈÉÌÒÙ][a-zàèéìòù]+)/i);
     const cognomeMatch = conversationOriginal.match(/cognome\s*[:\s]+([A-ZÀÈÉÌÒÙ][a-zàèéìòù]+)/i);
     const detectedNome = nomeMatch?.[1]?.trim() || null;
@@ -345,7 +341,7 @@ ${scopeContext}`;
     console.log('📍 USER messages only:', userMessages.substring(0, 200));
     console.log('📍 RAW input sample:', conversationOriginal.substring(0, 300));
 
-    // Detect partial scope from keywords
+
     const partialKeywords = [
       'solo bagno', 'solo cucina', 'solo intonaco', 'solo pittura', 'solo soffitto',
       'tetto del bagno', 'soffitto del bagno', 'un bagno', 'rifare il soffitto',
@@ -357,13 +353,13 @@ ${scopeContext}`;
     if (hasPartialKeywords) {
       detectedRenovationScope = 'partial';
       console.log('🔍 Detected PARTIAL scope from conversation');
-      
-      // Extract room
+
+     
       if (conversationText.includes('bagno')) detectedTargetRooms.push('bagno');
       if (conversationText.includes('cucina')) detectedTargetRooms.push('cucina');
       if (conversationText.includes('camera')) detectedTargetRooms.push('camera');
       
-      // Detect micro-intervention (very small job)
+
       if (conversationText.includes('solo intonaco') || 
           conversationText.includes('solo pittura') ||
           conversationText.includes('tetto') || 
@@ -385,21 +381,19 @@ ${scopeContext}`;
 
     console.log('Final scope analysis:', { detectedRenovationScope, detectedTargetRooms, isMicroIntervention });
 
-    // FASE 2: Multi-Level Fallback System (CASE-INSENSITIVE)
     const conversationLower = conversationText.toLowerCase();
     const lastUserMessage = (messages[messages.length - 1]?.content || '').toLowerCase();
     const messageCount = messages.length;
     
-    // Fallback Level 1: AI explicitly signals completion
+
     const hasCompletionPhrase = conversationLower.includes('tutte le informazioni') || 
                                  conversationLower.includes('ho tutte le informazioni') ||
                                  conversationLower.includes('completato');
     
-    // Fallback Level 2: User says "no" to budget question (last question)
     const userRefusedBudget = (lastUserMessage === 'no' || lastUserMessage === 'no grazie') && 
                                conversationLower.includes('budget');
     
-    // Interview status logging
+
     console.log('📊 Interview Status:', {
       messageCount,
       hasEmail: /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(conversationOriginal),
@@ -415,11 +409,10 @@ ${scopeContext}`;
       detectedScope: detectedRenovationScope
     });
     
-    // ====== PRE-COMPLETION VALIDATION (CRITICAL) ======
+
     const hasValidLocation = detectedCap && detectedCitta;
     const hasValidEmail = detectedEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(detectedEmail);
     
-    // If AI wants to complete but essential data is missing, force re-prompt
     if ((isComplete || hasCompletionPhrase) && (!hasValidEmail || !hasValidLocation)) {
       const missingInfo = [];
       if (!hasValidEmail) missingInfo.push('email');
@@ -435,13 +428,11 @@ ${scopeContext}`;
       });
     }
     
-    // TRIGGER AUTO-COMPLETION if ANY fallback is met
     if (isComplete || 
         (detectedRenovationScope !== 'unknown' && hasCompletionPhrase) ||
         userRefusedBudget) {
       console.log('💾 Saving interview completion data...');
       
-      // Build comprehensive interview_data with location at root level
       const interviewData = {
         location: detectedCap ? `${detectedCitta}, ${detectedCap}` : 'Non specificato',
         client_info: { 
@@ -478,14 +469,12 @@ ${scopeContext}`;
         conversation_summary: conversationText.substring(0, 500)
       };
 
-      // Extract conversational response (remove hidden tag)
       let conversationalResponse = aiResponse;
       const tagIndex = aiResponse.indexOf('<!--INTERVIEW_COMPLETE');
       if (tagIndex > 0) {
         conversationalResponse = aiResponse.substring(0, tagIndex).trim();
       }
 
-      // Update lead with interview completion + geographical data + contact info
       const { error: updateError } = await supabase
         .from('leads')
         .update({
@@ -522,7 +511,6 @@ ${scopeContext}`;
       });
     }
 
-    // If not complete, return response without completion
     return new Response(JSON.stringify({ 
       response: aiResponse,
       interview_complete: false

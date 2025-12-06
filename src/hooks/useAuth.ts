@@ -22,7 +22,9 @@ export function useAuth() {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('[useAuth] Auth state changed:', event, session?.user?.id);
+        if (import.meta.env.DEV) {
+          console.log('[useAuth] Auth state changed:', event, session?.user?.id);
+        }
         setSession(session);
         setUser(session?.user ?? null);
         listenerReady = true;
@@ -32,7 +34,9 @@ export function useAuth() {
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('[useAuth] Initial session check:', session?.user?.id);
+      if (import.meta.env.DEV) {
+        console.log('[useAuth] Initial session check:', session?.user?.id);
+      }
       setSession(session);
       setUser(session?.user ?? null);
       sessionChecked = true;

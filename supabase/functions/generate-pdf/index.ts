@@ -1,516 +1,291 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
+import {
+  PDFDocument,
+  StandardFonts,
+  rgb,
+} from "https://esm.sh/pdf-lib@1.17.1";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
-function generatePDFHTML(leadData: any): string {
-  const { user_contact, capitolato_data, cost_estimate_min, cost_estimate_max, confidence, disclaimer, foto_urls, planimetria_url } = leadData;
-  
-  const currentDate = new Date().toLocaleDateString('it-IT');
-  const costRange = `€${cost_estimate_min?.toLocaleString('it-IT')} - €${cost_estimate_max?.toLocaleString('it-IT')}`;
-  const confidencePercent = Math.round((confidence || 0.7) * 100);
-  
-  const sectionTitles = {
-    demolizioni: "Demolizioni e Preparazione",
-    impianti_elettrici: "Impianti Elettrici",
-    impianti_idraulici: "Impianti Idraulici/Termici",
-    murature: "Murature e Tramezzi",
-    massetti: "Massetti e Sottofondi",
-    pavimenti: "Pavimenti e Rivestimenti",
-    serramenti: "Serramenti e Infissi",
-    pitturazioni: "Pitturazioni e Finiture",
-    opere_accessorie: "Opere Accessorie"
-  };
+async function fetchCapitolato(leadId: string) {
+  const url =
+    "https://ibzrnleunnfjyddyjkxg.supabase.co/functions/v1/generate-capitolato";
 
-  return `
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Capitolato BuildHomeAI</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Arial', sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background: white;
-        }
-        
-        .page {
-            width: 210mm;
-            min-height: 297mm;
-            margin: 0 auto;
-            padding: 20mm;
-            background: white;
-            page-break-after: always;
-        }
-        
-        .page:last-child {
-            page-break-after: avoid;
-        }
-        
-        /* Cover Page */
-        .cover-page {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            min-height: 257mm;
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-            color: white;
-            position: relative;
-        }
-        
-        .logo-section {
-            margin-bottom: 40px;
-        }
-        
-        .logo-text {
-            font-size: 48px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            letter-spacing: -1px;
-        }
-        
-        .logo-subtitle {
-            font-size: 18px;
-            opacity: 0.9;
-            font-weight: 300;
-        }
-        
-        .cover-title {
-            font-size: 36px;
-            font-weight: bold;
-            margin: 40px 0 20px 0;
-            line-height: 1.2;
-        }
-        
-        .client-info {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 30px;
-            border-radius: 15px;
-            margin: 30px 0;
-            backdrop-filter: blur(10px);
-        }
-        
-        .client-name {
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        
-        .client-address {
-            font-size: 16px;
-            opacity: 0.9;
-        }
-        
-        .cover-date {
-            position: absolute;
-            bottom: 30px;
-            font-size: 16px;
-            opacity: 0.8;
-        }
-        
-        /* Content Pages */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-bottom: 20px;
-            border-bottom: 3px solid #2563eb;
-            margin-bottom: 30px;
-        }
-        
-        .header-logo {
-            font-size: 24px;
-            font-weight: bold;
-            color: #2563eb;
-        }
-        
-        .page-number {
-            color: #666;
-            font-size: 14px;
-        }
-        
-        h1 {
-            font-size: 28px;
-            color: #2563eb;
-            margin-bottom: 20px;
-            font-weight: bold;
-        }
-        
-        h2 {
-            font-size: 22px;
-            color: #2563eb;
-            margin: 30px 0 15px 0;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #e5e7eb;
-        }
-        
-        h3 {
-            font-size: 18px;
-            color: #374151;
-            margin: 20px 0 10px 0;
-            font-weight: 600;
-        }
-        
-        .cost-summary {
-            background: #f8fafc;
-            border: 2px solid #2563eb;
-            border-radius: 12px;
-            padding: 25px;
-            margin: 25px 0;
-            text-align: center;
-        }
-        
-        .cost-amount {
-            font-size: 32px;
-            font-weight: bold;
-            color: #2563eb;
-            margin: 10px 0;
-        }
-        
-        .confidence-badge {
-            display: inline-block;
-            background: #10b981;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 25px;
-            font-size: 14px;
-            font-weight: 600;
-            margin: 10px 0;
-        }
-        
-        .section {
-            margin-bottom: 35px;
-            page-break-inside: avoid;
-        }
-        
-        .section-content {
-            background: #f9fafb;
-            padding: 20px;
-            border-radius: 8px;
-            border-left: 4px solid #2563eb;
-        }
-        
-        .description {
-            margin-bottom: 20px;
-            font-size: 16px;
-            line-height: 1.7;
-        }
-        
-        .subsection {
-            margin: 15px 0;
-        }
-        
-        .subsection h4 {
-            font-size: 16px;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 8px;
-        }
-        
-        ul {
-            margin: 8px 0;
-            padding-left: 20px;
-        }
-        
-        li {
-            margin: 6px 0;
-            line-height: 1.5;
-        }
-        
-        .materials-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin: 10px 0;
-        }
-        
-        .material-tag {
-            background: #e5e7eb;
-            color: #374151;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 14px;
-        }
-        
-        .disclaimer-box {
-            background: #fef3cd;
-            border: 2px solid #f59e0b;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 30px 0;
-        }
-        
-        .disclaimer-title {
-            font-weight: bold;
-            color: #92400e;
-            margin-bottom: 10px;
-            font-size: 18px;
-        }
-        
-        .disclaimer-text {
-            color: #92400e;
-            line-height: 1.6;
-        }
-        
-        .attachments-section {
-            margin-top: 30px;
-        }
-        
-        .attachment-item {
-            background: #f3f4f6;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 10px 0;
-            border-left: 4px solid #6b7280;
-        }
-        
-        .attachment-name {
-            font-weight: 600;
-            color: #374151;
-        }
-        
-        .attachment-type {
-            color: #6b7280;
-            font-size: 14px;
-        }
-        
-        .footer {
-            position: fixed;
-            bottom: 15mm;
-            left: 20mm;
-            right: 20mm;
-            text-align: center;
-            font-size: 12px;
-            color: #6b7280;
-            border-top: 1px solid #e5e7eb;
-            padding-top: 10px;
-        }
-        
-        @media print {
-            .page {
-                margin: 0;
-                box-shadow: none;
-            }
-        }
-    </style>
-</head>
-<body>
-    <!-- Cover Page -->
-    <div class="page cover-page">
-        <div class="logo-section">
-            <div class="logo-text">BuildHomeAI</div>
-            <div class="logo-subtitle">Intelligenza Artificiale per la Ristrutturazione</div>
-        </div>
-        
-        <h1 class="cover-title">Capitolato Tecnico<br/>Personalizzato</h1>
-        
-        <div class="client-info">
-            <div class="client-name">${user_contact?.nome || ''} ${user_contact?.cognome || ''}</div>
-            <div class="client-address">${user_contact?.indirizzo || ''}</div>
-        </div>
-        
-        <div class="cover-date">Generato il ${currentDate}</div>
-    </div>
-    
-    <!-- Summary Page -->
-    <div class="page">
-        <div class="header">
-            <div class="header-logo">BuildHomeAI</div>
-            <div class="page-number">Pagina 2</div>
-        </div>
-        
-        <h1>Riepilogo Progetto</h1>
-        
-        <div class="cost-summary">
-            <h3>Stima Costi del Progetto</h3>
-            <div class="cost-amount">${costRange}</div>
-            <div class="confidence-badge">Affidabilità: ${confidencePercent}%</div>
-        </div>
-        
-        <div class="disclaimer-box">
-            <div class="disclaimer-title">⚠️ Importante</div>
-            <div class="disclaimer-text">
-                ${disclaimer || 'La stima è indicativa e basata sui dati forniti. È necessario un sopralluogo per preventivo vincolante.'}
-            </div>
-        </div>
-        
-        <h2>Allegati Forniti</h2>
-        <div class="attachments-section">
-            ${planimetria_url ? `
-            <div class="attachment-item">
-                <div class="attachment-name">📋 Planimetria</div>
-                <div class="attachment-type">Documento tecnico fornito dal cliente</div>
-            </div>
-            ` : ''}
-            
-            ${foto_urls && foto_urls.length > 0 ? `
-            <div class="attachment-item">
-                <div class="attachment-name">📸 Fotografie Immobile</div>
-                <div class="attachment-type">${foto_urls.length} foto fornite dal cliente</div>
-            </div>
-            ` : ''}
-        </div>
-    </div>
-    
-    <!-- Capitolato Sections -->
-    ${capitolato_data ? Object.entries(capitolato_data).map(([key, section]: [string, any], index: number) => `
-    <div class="page">
-        <div class="header">
-            <div class="header-logo">BuildHomeAI</div>
-            <div class="page-number">Pagina ${3 + index}</div>
-        </div>
-        
-        <div class="section">
-            <h2>${sectionTitles[key as keyof typeof sectionTitles] || key}</h2>
-            
-            <div class="section-content">
-                <div class="description">
-                    <strong>Descrizione:</strong> ${section.descrizione || 'Non specificato'}
-                </div>
-                
-                ${section.lavorazioni && section.lavorazioni.length > 0 ? `
-                <div class="subsection">
-                    <h4>🔨 Lavorazioni Previste:</h4>
-                    <ul>
-                        ${section.lavorazioni.map((item: string) => `<li>${item}</li>`).join('')}
-                    </ul>
-                </div>
-                ` : ''}
-                
-                ${section.materiali && section.materiali.length > 0 ? `
-                <div class="subsection">
-                    <h4>🏗️ Materiali:</h4>
-                    <div class="materials-list">
-                        ${section.materiali.map((item: string) => `<span class="material-tag">${item}</span>`).join('')}
-                    </div>
-                </div>
-                ` : ''}
-                
-                ${section.quantita_stimate ? `
-                <div class="subsection">
-                    <h4>📊 Quantità Stimate:</h4>
-                    <p>${section.quantita_stimate}</p>
-                </div>
-                ` : ''}
-            </div>
-        </div>
-    </div>
-    `).join('') : ''}
-    
-    <div class="footer">
-        <strong>BuildHomeAI</strong> è un intermediario tecnologico e non è responsabile dell'esecuzione dei lavori. 
-        Per informazioni: info@buildhomeai.com
-    </div>
-</body>
-</html>
-  `;
-}
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${Deno.env.get("SERVICE_ROLE_KEY")}`,
+    },
+    body: JSON.stringify({ leadId }),
+  });
 
-serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+  if (!response.ok) {
+    const err = await response.text();
+    console.error("generate-capitolato error:", err);
+    throw new Error("Failed to generate capitolato");
   }
 
-  try {
-    const { leadId } = await req.json();
-    
-    if (!leadId) {
-      throw new Error('leadId is required');
+  const json = await response.json();
+
+  if (!json.capitolato || !json.stima_costi) {
+    throw new Error("Invalid capitolato structure received");
+  }
+
+  return json;
+}
+
+
+async function generatePDF(lead: any, capitolatoResponse: any) {
+  const pdfDoc = await PDFDocument.create();
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  let page = pdfDoc.addPage([595, 842]);
+  let y = 800;
+
+  
+  page.drawText("Capitolato Tecnico", {
+    x: 40,
+    y,
+    size: 22,
+    font: bold,
+  });
+
+  y -= 35;
+
+  page.drawText(
+    `Cliente: ${lead.user_contact?.nome || ""} ${
+      lead.user_contact?.cognome || ""
+    }`,
+    { x: 40, y, size: 12, font }
+  );
+
+  y -= 18;
+
+  page.drawText(`Email: ${lead.user_contact?.email || "-"}`, {
+    x: 40,
+    y,
+    size: 12,
+    font,
+  });
+
+  y -= 25;
+
+  // BASIC INFO
+  page.drawText("Informazioni Lead", {
+    x: 40,
+    y,
+    size: 14,
+    font: bold,
+  });
+
+  y -= 20;
+
+  const leadInfo = [
+    `Lead ID: ${lead.id}`,
+    `Data generazione: ${new Date().toLocaleString()}`,
+  ];
+
+  leadInfo.forEach((line) => {
+    page.drawText(line, { x: 40, y, size: 11, font });
+    y -= 16;
+  });
+
+  y -= 10;
+
+
+  page.drawText("Capitolato:", {
+    x: 40,
+    y,
+    size: 14,
+    font: bold,
+  });
+
+  y -= 20;
+
+  const capitolato = capitolatoResponse.capitolato;
+  const stima = capitolatoResponse.stima_costi;
+
+
+  function drawWrapped(text: string, size = 11) {
+    const maxWidth = 500;
+    const words = text.split(" ");
+    let line = "";
+
+    for (const w of words) {
+      const width = font.widthOfTextAtSize(line + w, size);
+      if (width > maxWidth) {
+        page.drawText(line, { x: 40, y, size, font });
+        y -= 14;
+        line = w + " ";
+      } else {
+        line += w + " ";
+      }
     }
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    if (line.trim().length > 0) {
+      page.drawText(line, { x: 40, y, size, font });
+      y -= 14;
+    }
+  }
 
-    // Get lead data
+
+  for (const chapter in capitolato) {
+    if (y < 80) {
+      page = pdfDoc.addPage([595, 842]);
+      y = 800;
+    }
+
+    page.drawText(chapter.toUpperCase(), { x: 40, y, size: 13, font: bold });
+    y -= 18;
+
+    const section = capitolato[chapter];
+
+    for (const key in section) {
+      drawWrapped(`• ${key}: ${JSON.stringify(section[key])}`);
+    }
+
+    y -= 10;
+  }
+
+
+  page.drawText("Stima Costi:", {
+    x: 40,
+    y,
+    size: 14,
+    font: bold,
+  });
+
+  y -= 22;
+
+  drawWrapped(`Min: €${stima.min_euro}`);
+  drawWrapped(`Max: €${stima.max_euro}`);
+  drawWrapped(`Confidence: ${stima.confidence}`);
+
+
+  return await pdfDoc.save();
+}
+
+
+async function sendEmailWithPDF(toEmail: string, userName: string, pdfUrl: string) {
+  const apiKey = Deno.env.get("POSTMARK_SERVER_TOKEN");
+  const sender = Deno.env.get("POSTMARK_SENDER_EMAIL");
+
+  if (!apiKey || !sender) {
+    console.error("Missing Postmark config");
+    return false;
+  }
+
+  const emailData = {
+    MessageStream: "outbound",
+    From: `BuildHomeAI <${sender}>`,
+    To: toEmail,
+    Subject: "Il tuo Capitolato Tecnico",
+    HtmlBody: `
+      <p>Ciao ${userName},</p>
+      <p>Il tuo capitolato tecnico è pronto.</p>
+      <p><a href="${pdfUrl}">Scarica il PDF</a></p>
+    `,
+    TextBody: `Il tuo PDF è pronto: ${pdfUrl}`,
+    Tag: "capitolato",
+  };
+
+  const response = await fetch("https://api.postmarkapp.com/email", {
+    method: "POST",
+    headers: {
+      "X-Postmark-Server-Token": apiKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(emailData),
+  });
+
+  return response.ok;
+}
+
+
+serve(async (req) => {
+  if (req.method === "OPTIONS")
+    return new Response(null, { headers: corsHeaders });
+
+  try {
+    const { leadId, sendEmail = true } = await req.json();
+    if (!leadId) throw new Error("leadId is required");
+
+    const supabase = createClient(
+      Deno.env.get("URL")!,
+      Deno.env.get("SERVICE_ROLE_KEY")!
+    );
+
+
     const { data: lead, error: leadError } = await supabase
-      .from('leads')
-      .select('*')
-      .eq('id', leadId)
+      .from("leads")
+      .select("*")
+      .eq("id", leadId)
       .single();
 
-    if (leadError || !lead) {
-      throw new Error('Lead not found');
-    }
+    if (leadError || !lead) throw new Error("Lead not found");
 
-    console.log('Generating PDF for lead:', leadId);
 
-    // Generate HTML content
-    const htmlContent = generatePDFHTML(lead);
-    
-    // For now, we'll save HTML content as a .html file
-    // In the future, this should be replaced with actual PDF generation
-    const htmlBuffer = new TextEncoder().encode(htmlContent);
-    
-    // Upload HTML file to Supabase storage
-    const fileName = `capitolato-${leadId}-${Date.now()}.html`;
-    const filePath = `pdfs/${fileName}`;
-    
-    console.log('Uploading file:', filePath);
-    
+    const capitolatoData = await fetchCapitolato(leadId);
+
+
+    const pdfBytes = await generatePDF(lead, capitolatoData);
+    const fileName = `report-${leadId}.pdf`;
+
+  
     const { error: uploadError } = await supabase.storage
-      .from('leads-uploads')
-      .upload(filePath, htmlBuffer, {
-        contentType: 'text/html',
-        upsert: true
+      .from("leads-uploads")
+      .upload(`pdfs/${fileName}`, pdfBytes, {
+        contentType: "application/pdf",
+        upsert: true,
       });
 
-    if (uploadError) {
-      console.error('Upload error:', uploadError);
-      throw new Error('Failed to upload PDF');
-    }
+    if (uploadError) throw new Error(uploadError.message);
 
-    // Get public URL for the PDF
+
     const { data: urlData } = await supabase.storage
-      .from('leads-uploads')
-      .getPublicUrl(filePath);
+      .from("leads-uploads")
+      .getPublicUrl(`pdfs/${fileName}`);
 
     const pdfUrl = urlData.publicUrl;
 
-    // Update lead with PDF URL
-    const { error: updateError } = await supabase
-      .from('leads')
-      .update({ pdf_url: pdfUrl })
-      .eq('id', leadId);
 
-    if (updateError) {
-      console.error('Database update error:', updateError);
-      throw new Error('Failed to save PDF URL');
+    await supabase
+      .from("leads")
+      .update({
+        pdf_url: pdfUrl,
+        status: "report_delivered",
+        report_delivered_at: new Date().toISOString(),
+      })
+      .eq("id", leadId);
+
+  
+    let emailSent = false;
+    if (sendEmail && lead.user_contact?.email) {
+      const name = `${lead.user_contact?.nome || ""} ${lead.user_contact?.cognome || ""}`.trim();
+      emailSent = await sendEmailWithPDF(lead.user_contact.email, name, pdfUrl);
     }
 
-    console.log('PDF generated and saved successfully:', pdfUrl);
-
-    return new Response(JSON.stringify({
-      success: true,
-      pdf_url: pdfUrl,
-      message: 'PDF generato e salvato con successo'
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-
+    return new Response(
+      JSON.stringify({
+        success: true,
+        pdf_url: pdfUrl,
+        email_sent: emailSent,
+        capitolato_used: true,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (error) {
-    console.error('Error in generate-pdf function:', error);
-    return new Response(JSON.stringify({
-      error: error instanceof Error ? error.message : 'An error occurred generating PDF'
-    }), {
+    console.error("Error:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

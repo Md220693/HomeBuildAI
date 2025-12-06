@@ -1,23 +1,26 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Upload as UploadIcon, FileText, Image, X, CheckCircle, Loader2, AlertCircle } from "lucide-react";
+import { Upload as UploadIcon, FileText, Image, X, CheckCircle, Loader2, AlertCircle, CloudUpload, Eye, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface UploadedFile {
   file: File;
   id: string;
   type: 'planimetria' | 'foto';
+  previewUrl?: string;
 }
 
 const Upload = () => {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [skipFiles, setSkipFiles] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -52,11 +55,19 @@ const Upload = () => {
       return true;
     });
 
-    const newFiles = validFiles.map(file => ({
-      file,
-      id: `${Date.now()}-${Math.random()}`,
-      type
-    }));
+    const newFiles = validFiles.map(file => {
+      let previewUrl: string | undefined;
+      if (file.type.includes('image')) {
+        previewUrl = URL.createObjectURL(file);
+      }
+      
+      return {
+        file,
+        id: `${Date.now()}-${Math.random()}`,
+        type,
+        previewUrl
+      };
+    });
 
     setUploadedFiles(prev => [...prev, ...newFiles]);
     
@@ -68,7 +79,27 @@ const Upload = () => {
     }
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent, type: 'planimetria' | 'foto') => {
+    e.preventDefault();
+    setIsDragging(false);
+    handleFileUpload(e.dataTransfer.files, type);
+  };
+
   const removeFile = (id: string) => {
+    const fileToRemove = uploadedFiles.find(f => f.id === id);
+    if (fileToRemove?.previewUrl) {
+      URL.revokeObjectURL(fileToRemove.previewUrl);
+    }
     setUploadedFiles(prev => prev.filter(f => f.id !== id));
   };
 
@@ -164,205 +195,344 @@ const Upload = () => {
   const hasMinimumFiles = foto.length >= 4 || planimetrie.length >= 1;
   const canProceed = hasMinimumFiles || skipFiles;
 
+  // Cleanup preview URLs on unmount
+  useEffect(() => {
+    return () => {
+      uploadedFiles.forEach(file => {
+        if (file.previewUrl) {
+          URL.revokeObjectURL(file.previewUrl);
+        }
+      });
+    };
+  }, [uploadedFiles]);
+
   return (
-    <div className="min-h-screen bg-gradient-subtle">
+    <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20">
       <Header />
       
       <main className="container py-12">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-foreground mb-4">
-              Carica foto e planimetria (opzionale)
+        <div className="max-w-6xl mx-auto">
+          {/* Enhanced Header Section */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-12 space-y-6"
+          >
+            <h1 className="text-4xl md:text-5xl font-bold text-foreground">
+              Carica i tuoi documenti
             </h1>
-            <p className="text-xl text-muted-foreground mb-4">
-              Carica almeno 4 foto o 1 planimetria per una stima più accurata. Puoi anche proseguire senza caricare file se preferisci.
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              Per una stima più accurata, carica <strong className="text-accent">planimetrie o foto</strong> dell'immobile. 
+              Oppure prosegui direttamente con l'intervista AI.
             </p>
-            <div className="bg-accent/10 border border-accent/20 rounded-lg p-4 text-sm text-foreground/80">
-              <p className="mb-2"><strong>Formati supportati:</strong> PDF, JPG, PNG per planimetrie; JPG, PNG per foto.</p>
-              <p className="mb-2"><strong>Per migliori risultati:</strong> Carica foto con luce naturale e planimetria chiara. Più materiale fornisci, più accurata sarà la stima.</p>
-              <p><strong>Privacy:</strong> I tuoi dati restano privati e non saranno condivisi senza il tuo consenso.</p>
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-8 mb-8">
-            {/* Upload Planimetrie */}
-            <Card className="p-6">
-              <div className="text-center mb-4">
-                <FileText className="h-12 w-12 text-primary mx-auto mb-4" />
-                <h2 className="text-2xl font-semibold mb-2">Planimetrie</h2>
-                <p className="text-muted-foreground mb-4">
-                  Opzionale - Consigliata (PDF, JPG, PNG)
-                </p>
+            
+            {/* Progress Indicators */}
+            <div className="flex flex-wrap justify-center gap-6 mt-8">
+              <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border-2 ${
+                planimetrie.length >= 1 
+                  ? 'border-green-500 bg-green-500/10 text-green-600' 
+                  : 'border-border bg-background text-muted-foreground'
+              }`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  planimetrie.length >= 1 ? 'bg-green-500 text-white' : 'bg-muted'
+                }`}>
+                  {planimetrie.length >= 1 ? <CheckCircle className="w-4 h-4" /> : '1'}
+                </div>
+                <span className="font-semibold">Planimetria</span>
               </div>
               
-              <label className="block">
-                <input
-                  type="file"
-                  multiple
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={(e) => handleFileUpload(e.target.files, 'planimetria')}
-                  className="hidden"
-                />
-                <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-smooth cursor-pointer">
-                  <UploadIcon className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+              <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border-2 ${
+                foto.length >= 4 
+                  ? 'border-green-500 bg-green-500/10 text-green-600' 
+                  : 'border-border bg-background text-muted-foreground'
+              }`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  foto.length >= 4 ? 'bg-green-500 text-white' : 'bg-muted'
+                }`}>
+                  {foto.length >= 4 ? <CheckCircle className="w-4 h-4" /> : '4'}
+                </div>
+                <span className="font-semibold">Foto</span>
+              </div>
+            </div>
+          </motion.div>
+
+          <div className="grid lg:grid-cols-2 gap-8 mb-8">
+            {/* Upload Planimetrie */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <Card className="p-8 hover:shadow-lg transition-shadow duration-300 border-2">
+                <div className="text-center mb-6">
+                  <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <FileText className="h-8 w-8 text-primary" />
+                  </div>
+                  <h2 className="text-2xl font-bold mb-2">Planimetrie</h2>
                   <p className="text-muted-foreground">
-                    Clicca per selezionare i file
+                    PDF, JPG, PNG • Max 10MB
                   </p>
                 </div>
-              </label>
+                
+                <label className="block">
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => handleFileUpload(e.target.files, 'planimetria')}
+                    className="hidden"
+                  />
+                  <div 
+                    className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 cursor-pointer ${
+                      isDragging 
+                        ? 'border-primary bg-primary/5 scale-105' 
+                        : 'border-border hover:border-primary hover:bg-primary/5'
+                    }`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, 'planimetria')}
+                  >
+                    <CloudUpload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-lg font-medium mb-2">Trascina le planimetrie qui</p>
+                    <p className="text-muted-foreground text-sm">
+                      o clicca per selezionare i file
+                    </p>
+                  </div>
+                </label>
 
-              {planimetrie.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  {planimetrie.map((uploaded) => (
-                    <div key={uploaded.id} className="flex items-center justify-between p-2 bg-secondary rounded">
-                      <span className="text-sm text-foreground truncate">
-                        {uploaded.file.name}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeFile(uploaded.id)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              
-              <div className="mt-4 flex items-center">
-                {planimetrie.length >= 1 ? (
-                  <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
-                ) : (
-                  <div className="h-5 w-5 rounded-full border-2 border-muted-foreground mr-2" />
-                )}
-                <span className={`text-sm ${planimetrie.length >= 1 ? 'text-green-600' : 'text-muted-foreground'}`}>
-                  {planimetrie.length} di 1+ richieste
-                </span>
-              </div>
-            </Card>
+                <AnimatePresence>
+                  {planimetrie.length > 0 && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mt-6 space-y-3"
+                    >
+                      <h3 className="font-semibold text-foreground">Planimetrie caricate:</h3>
+                      {planimetrie.map((uploaded) => (
+                        <motion.div 
+                          key={uploaded.id}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.9 }}
+                          className="flex items-center justify-between p-3 bg-secondary rounded-xl group hover:bg-secondary/80 transition-colors"
+                        >
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <FileText className="h-5 w-5 text-primary flex-shrink-0" />
+                            <span className="text-sm font-medium truncate">
+                              {uploaded.file.name}
+                            </span>
+                            <span className="text-xs text-muted-foreground flex-shrink-0">
+                              {(uploaded.file.size / 1024 / 1024).toFixed(1)}MB
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeFile(uploaded.id)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </Card>
+            </motion.div>
 
             {/* Upload Foto */}
-            <Card className="p-6">
-              <div className="text-center mb-4">
-                <Image className="h-12 w-12 text-primary mx-auto mb-4" />
-                <h2 className="text-2xl font-semibold mb-2">Foto</h2>
-                <p className="text-muted-foreground mb-4">
-                  Opzionale - Consigliate almeno 4 foto (JPG, PNG)
-                </p>
-              </div>
-              
-              <label className="block">
-                <input
-                  type="file"
-                  multiple
-                  accept=".jpg,.jpeg,.png"
-                  onChange={(e) => handleFileUpload(e.target.files, 'foto')}
-                  className="hidden"
-                />
-                <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-smooth cursor-pointer">
-                  <UploadIcon className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <Card className="p-8 hover:shadow-lg transition-shadow duration-300 border-2">
+                <div className="text-center mb-6">
+                  <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <Image className="h-8 w-8 text-primary" />
+                  </div>
+                  <h2 className="text-2xl font-bold mb-2">Foto dell'immobile</h2>
                   <p className="text-muted-foreground">
-                    Clicca per selezionare le foto
+                    JPG, PNG • Max 10MB • Minimo 4 foto consigliate
                   </p>
                 </div>
-              </label>
+                
+                <label className="block">
+                  <input
+                    type="file"
+                    multiple
+                    accept=".jpg,.jpeg,.png"
+                    onChange={(e) => handleFileUpload(e.target.files, 'foto')}
+                    className="hidden"
+                  />
+                  <div 
+                    className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 cursor-pointer ${
+                      isDragging 
+                        ? 'border-primary bg-primary/5 scale-105' 
+                        : 'border-border hover:border-primary hover:bg-primary/5'
+                    }`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, 'foto')}
+                  >
+                    <CloudUpload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-lg font-medium mb-2">Trascina le foto qui</p>
+                    <p className="text-muted-foreground text-sm">
+                      o clicca per selezionare i file
+                    </p>
+                  </div>
+                </label>
 
-              {foto.length > 0 && (
-                <div className="mt-4 grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-                  {foto.map((uploaded) => (
-                    <div key={uploaded.id} className="relative group">
-                      <div className="aspect-square bg-secondary rounded flex items-center justify-center">
-                        <Image className="h-8 w-8 text-muted-foreground" />
+                <AnimatePresence>
+                  {foto.length > 0 && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mt-6"
+                    >
+                      <h3 className="font-semibold text-foreground mb-3">
+                        Foto caricate ({foto.length}/4+):
+                      </h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-64 overflow-y-auto">
+                        {foto.map((uploaded) => (
+                          <motion.div 
+                            key={uploaded.id}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            className="relative group aspect-square bg-secondary rounded-xl overflow-hidden"
+                          >
+                            {uploaded.previewUrl ? (
+                              <img 
+                                src={uploaded.previewUrl} 
+                                alt={uploaded.file.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Image className="h-8 w-8 text-muted-foreground" />
+                              </div>
+                            )}
+                            
+                            {/* File info overlay */}
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                onClick={() => window.open(uploaded.previewUrl, '_blank')}
+                              >
+                                <Eye className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                onClick={() => removeFile(uploaded.id)}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            
+                            {/* File name badge */}
+                            <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-1 truncate">
+                              {uploaded.file.name}
+                            </div>
+                          </motion.div>
+                        ))}
                       </div>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="absolute -top-2 -right-2 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-smooth"
-                        onClick={() => removeFile(uploaded.id)}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                      <p className="text-xs text-center mt-1 truncate">
-                        {uploaded.file.name}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-              
-              <div className="mt-4 flex items-center">
-                {foto.length >= 4 ? (
-                  <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
-                ) : (
-                  <div className="h-5 w-5 rounded-full border-2 border-muted-foreground mr-2" />
-                )}
-                <span className={`text-sm ${foto.length >= 4 ? 'text-green-600' : 'text-muted-foreground'}`}>
-                  {foto.length} di 4+ richieste
-                </span>
-              </div>
-            </Card>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </Card>
+            </motion.div>
           </div>
 
-          {/* Checkbox per saltare l'upload */}
-          <Card className="p-6 mb-8 bg-muted/30">
-            <div className="flex items-start space-x-3">
-              <Checkbox 
-                id="skip-files" 
-                checked={skipFiles}
-                onCheckedChange={(checked) => setSkipFiles(checked as boolean)}
-                disabled={isUploading}
-              />
-              <div className="flex-1">
-                <label 
-                  htmlFor="skip-files" 
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                >
-                  Non ho foto o planimetria disponibili
-                </label>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Prosegui direttamente con l'intervista AI. L'AI raccoglierà tutte le informazioni necessarie tramite domande dettagliate.
-                </p>
-              </div>
-            </div>
-            
-            {skipFiles && (
-              <div className="mt-4 flex items-start space-x-2 bg-orange-500/10 border border-orange-500/20 rounded-lg p-3">
-                <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-foreground/80">
-                  <p className="font-medium text-orange-600 mb-1">Nota importante</p>
-                  <p>Senza foto o planimetria, la stima potrebbe essere meno accurata. L'AI farà più domande durante l'intervista per compensare la mancanza di materiale visivo.</p>
+          {/* Skip Files Option */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Card className="p-6 mb-8 bg-muted/30 border-2">
+              <div className="flex items-start space-x-4">
+                <Checkbox 
+                  id="skip-files" 
+                  checked={skipFiles}
+                  onCheckedChange={(checked) => setSkipFiles(checked as boolean)}
+                  disabled={isUploading}
+                  className="mt-1 data-[state=checked]:bg-accent data-[state=checked]:border-accent"
+                />
+                <div className="flex-1">
+                  <label 
+                    htmlFor="skip-files" 
+                    className="text-lg font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer block mb-2"
+                  >
+                    Procedi senza caricare file
+                  </label>
+                  <p className="text-muted-foreground">
+                    Non hai foto o planimetria disponibili? L'AI raccoglierà tutte le informazioni necessarie tramite un'intervista dettagliata.
+                  </p>
+                  
+                  {skipFiles && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      className="mt-4 flex items-start space-x-3 bg-amber-500/10 border border-amber-500/20 rounded-xl p-4"
+                    >
+                      <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm">
+                        <p className="font-semibold text-amber-600 mb-1">Nota importante</p>
+                        <p className="text-foreground/80">
+                          Senza materiale visivo, la stima potrebbe essere meno accurata. L'AI farà domande più dettagliate durante l'intervista per compensare.
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
                 </div>
               </div>
-            )}
-          </Card>
+            </Card>
+          </motion.div>
 
-          <div className="text-center">
+          {/* CTA Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="text-center"
+          >
             <Button 
-              variant="hero" 
               size="xl" 
               disabled={!canProceed || isUploading}
               onClick={handleProceedWithAI}
-              className="disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-gradient-to-r from-accent to-accent/90 hover:from-accent/90 hover:to-accent text-white shadow-2xl rounded-2xl px-12 py-6 font-bold group transition-all duration-300 hover:scale-105 hover:shadow-3xl border-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
               {isUploading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-3 h-5 w-5 animate-spin" />
                   Caricamento in corso...
                 </>
               ) : skipFiles ? (
                 "Inizia l'intervista AI"
               ) : (
-                "Continua con l'intervista AI"
+                "Analizza con l'AI"
               )}
             </Button>
             
             {!canProceed && !isUploading && (
-              <p className="text-muted-foreground mt-4">
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-muted-foreground mt-4 flex items-center justify-center gap-2"
+              >
+                <AlertCircle className="h-4 w-4" />
                 Carica almeno 4 foto o 1 planimetria, oppure seleziona l'opzione per proseguire senza file
-              </p>
+              </motion.p>
             )}
-          </div>
+          </motion.div>
         </div>
       </main>
     </div>

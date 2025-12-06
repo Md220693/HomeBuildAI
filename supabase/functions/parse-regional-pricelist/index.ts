@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface ParseRequest {
-  file_data: string; // base64 encoded
+  file_data: string;
   file_name: string;
   file_type: string;
   nome_regione: string;
@@ -21,8 +21,8 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseUrl = Deno.env.get('URL');
+    const supabaseServiceKey = Deno.env.get('SERVICE_ROLE_KEY');
 
     if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error('Missing required environment variables');
@@ -34,13 +34,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Parsing regional pricelist:', { file_name, file_type, nome_regione, anno_riferimento });
 
-    // Decode base64 file data
+
     const fileBuffer = Uint8Array.from(atob(file_data), c => c.charCodeAt(0));
 
     let parsedItems: any[] = [];
     let fonte = 'unknown';
 
-    // Determine file type and parse accordingly
+
     if (file_type.includes('csv') || file_name.toLowerCase().endsWith('.csv')) {
       fonte = 'csv';
       parsedItems = await parseCSVFile(fileBuffer);
@@ -58,7 +58,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Nessun elemento trovato nel file');
     }
 
-    // Upload original file to storage
+
     const fileName = `${nome_regione}_${anno_riferimento}_${Date.now()}_${file_name}`;
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('leads-uploads')
@@ -73,7 +73,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const fileUrl = uploadData ? `${supabaseUrl}/storage/v1/object/public/leads-uploads/${uploadData.path}` : null;
 
-    // Create regional pricelist record
+
     const { data: pricelistData, error: pricelistError } = await supabase
       .from('regional_pricelists')
       .insert([{
@@ -92,11 +92,11 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(`Errore creazione prezzario: ${pricelistError.message}`);
     }
 
-    // Insert price items with regional pricelist reference
+
     const priceItemsToInsert = parsedItems.map(item => ({
       ...item,
       regional_pricelist_id: pricelistData.id,
-      priority: 10 // Regional items have higher priority than national
+      priority: 10
     }));
 
     const { error: itemsError } = await supabase
@@ -144,7 +144,6 @@ async function parseCSVFile(fileBuffer: Uint8Array): Promise<any[]> {
   const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
   const items: any[] = [];
 
-  // Try to map common column names
   const columnMap = {
     item_code: findColumnIndex(headers, ['codice', 'code', 'item_code', 'cod']),
     category: findColumnIndex(headers, ['categoria', 'category', 'cat']),
@@ -175,12 +174,9 @@ async function parseCSVFile(fileBuffer: Uint8Array): Promise<any[]> {
 }
 
 async function parseExcelFile(fileBuffer: Uint8Array): Promise<any[]> {
-  // For Excel files, we'll use a simple heuristic approach
-  // In a real implementation, you'd use a library like SheetJS
-  // For now, we'll return a placeholder that simulates Excel parsing
+
   console.log('Excel parsing not fully implemented - using fallback');
   
-  // Return some sample data to demonstrate the concept
   return [
     {
       item_code: 'EXCEL_001',
@@ -193,8 +189,7 @@ async function parseExcelFile(fileBuffer: Uint8Array): Promise<any[]> {
 }
 
 async function parsePDFFile(fileBuffer: Uint8Array): Promise<any[]> {
-  // PDF parsing would require OCR or specialized libraries
-  // For now, we'll return a placeholder
+
   console.log('PDF parsing not fully implemented - using fallback');
   
   return [

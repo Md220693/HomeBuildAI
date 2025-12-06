@@ -2,25 +2,26 @@ project_id = "wncvvncldryfqqvpmnor"
 
 [functions.ai-interview]
 verify_jwt = false
-import_map = "./import_map.json"
-memory_mb = 512
 
 [functions.ai-interview-v2]
-verify_jwt = false
-import_map = "./import_map.json"
-memory_mb = 512
 
 [functions.invite-admin]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-pdf]
+verify_jwt = true
+
+[functions.send-report]
 verify_jwt = false
 
 [functions.get-system-setting]
 verify_jwt = false
 
 [functions.signup-supplier]
-verify_jwt = false
+verify_jwt = true
 
 [functions.parse-regional-pricelist]
 verify_jwt = true
+
+[functions.test-postmark]
+verify_jwt = false

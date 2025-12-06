@@ -14,14 +14,13 @@ interface PricingRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseUrl = Deno.env.get('URL');
+    const supabaseServiceKey = Deno.env.get('SERVICE_ROLE_KEY');
 
     if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error('Missing required environment variables');
@@ -33,19 +32,19 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Calculating pricing for:', { scope_json, geo, quality_tier, urgency });
 
-    // Get AI settings
+  
     const { data: settings } = await supabase
       .from('ai_settings')
       .select('*')
       .single();
 
-    // Extract region from geo string for regional pricing
+   
     const regionMatch = geo.toLowerCase();
     
-    // Get price items using intelligent regional selection
+  
     let priceItems: any[] = [];
     
-    // First try to get regional price items
+  
     if (regionMatch) {
       const { data: regionalItems } = await supabase
         .from('price_items')
@@ -65,7 +64,7 @@ const handler = async (req: Request): Promise<Response> => {
       priceItems = regionalItems || [];
     }
     
-    // Fallback to national items (no regional pricelist) if no regional found
+  
     if (priceItems.length === 0) {
       const { data: nationalItems } = await supabase
         .from('price_items')
@@ -76,7 +75,7 @@ const handler = async (req: Request): Promise<Response> => {
       priceItems = nationalItems || [];
     }
     
-    // Final fallback - get all items
+  
     if (priceItems.length === 0) {
       const { data: allItems } = await supabase
         .from('price_items')
@@ -86,22 +85,22 @@ const handler = async (req: Request): Promise<Response> => {
       priceItems = allItems || [];
     }
 
-    // Get modifiers
+  
     const [geoModifiers, qualityModifiers, urgencyModifiers] = await Promise.all([
       supabase.from('price_modifiers_geo').select('*'),
       supabase.from('price_modifiers_quality').select('*').eq('quality_tier', quality_tier),
       supabase.from('price_modifiers_urgency').select('*').eq('urgency_band', urgency)
     ]);
 
-    // Calculate base pricing from scope
+  
     let baseCost = 0;
     const lineItems = [];
 
-    // Extract CAP from geo string for geographic modifiers
+  
     const capMatch = geo.match(/\d{5}/);
     const cap = capMatch ? capMatch[0] : null;
 
-    // Find geographic multiplier
+  
     let geoMultiplier = 1.0;
     if (geoModifiers.data && cap) {
       const applicableGeoModifier = geoModifiers.data.find(mod => 
@@ -112,18 +111,18 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Get quality and urgency multipliers
+  
     const qualityMultiplier = qualityModifiers.data?.[0]?.multiplier || 1.0;
     const urgencyMultiplier = urgencyModifiers.data?.[0]?.multiplier || 1.0;
 
-    // Process scope_json to estimate items and quantities
+  
     if (scope_json && typeof scope_json === 'object') {
-      // Simplified price calculation - match scope items to price items
+    
       const scopeText = JSON.stringify(scope_json).toLowerCase();
       
       if (priceItems && priceItems.length > 0) {
         for (const item of priceItems) {
-          // Simple keyword matching for demo
+        
           const keywords = [
             item.item_code.toLowerCase(),
             item.category.toLowerCase(),
@@ -135,7 +134,7 @@ const handler = async (req: Request): Promise<Response> => {
           );
 
           if (hasMatch) {
-            // Estimate quantity based on scope complexity
+            
             const estimatedQuantity = Math.max(1, Math.floor(Math.random() * 10) + 1);
             const basePrice = parseFloat(item.base_price_eur);
             const adjustedPrice = basePrice * geoMultiplier * qualityMultiplier * urgencyMultiplier;
@@ -156,7 +155,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // If no matches found, provide default estimates
+    
     if (lineItems.length === 0) {
       lineItems.push({
         item_code: 'DEFAULT_001',
@@ -169,13 +168,13 @@ const handler = async (req: Request): Promise<Response> => {
       baseCost = 5000 * geoMultiplier * qualityMultiplier * urgencyMultiplier;
     }
 
-    // Apply guard rails if historical data is enabled
+  
     let minEstimate = baseCost * 0.8;
     let maxEstimate = baseCost * 1.2;
     let confidence = settings?.default_confidence || 75;
 
     if (settings?.use_storici) {
-      // Check historical quotes for similar projects
+     
       const { data: historicalQuotes } = await supabase
         .from('vendor_quotes')
         .select('total_eur, scope_json')
@@ -191,11 +190,11 @@ const handler = async (req: Request): Promise<Response> => {
         const minGuardRail = avgHistorical * (1 - guardRailPct);
         const maxGuardRail = avgHistorical * (1 + guardRailPct);
 
-        // Apply guard rails
+      
         minEstimate = Math.max(minEstimate, minGuardRail);
         maxEstimate = Math.min(maxEstimate, maxGuardRail);
         
-        // Increase confidence if within historical range
+      
         if (baseCost >= minGuardRail && baseCost <= maxGuardRail) {
           confidence = Math.min(95, confidence + 10);
         }

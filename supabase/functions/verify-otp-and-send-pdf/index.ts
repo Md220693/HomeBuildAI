@@ -25,15 +25,13 @@ async function sendEmailWithPostmark(to: string, subject: string, htmlBody: stri
       MessageStream: 'outbound'
     };
 
-    // If PDF URL provided, add as attachment
     if (pdfUrl) {
-      emailData.Attachments = [{
+     emailData.Attachments = [{
         Name: 'Capitolato_BuildHomeAI.pdf',
         ContentType: 'application/pdf',
         ContentID: 'capitolato-pdf'
       }];
-      // Note: Postmark requires base64 content for attachments
-      // For now, we'll include the link in the email body
+    
     }
 
     const response = await fetch('https://api.postmarkapp.com/email', {
@@ -145,7 +143,6 @@ function getSectionTitle(key: string): string {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -157,30 +154,31 @@ serve(async (req) => {
       throw new Error('leadId and OTP code are required');
     }
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get('URL')!;
+    const supabaseKey = Deno.env.get('SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get lead data with OTP verification
+
     const { data: lead, error: leadError } = await supabase
       .from('leads')
       .select('*')
       .eq('id', leadId)
       .single();
+    console.log("TYPE user_contact:", typeof lead.user_contact);
+    console.log("VALUE user_contact:", lead.user_contact);
+    console.log("Full lead object:", lead);
 
     if (leadError || !lead) {
       throw new Error('Lead not found');
     }
 
-    // Check OTP attempts
+
     if (lead.otp_attempts >= 3) {
       throw new Error('Troppi tentativi. Richiedi un nuovo codice OTP.');
     }
 
-    // Verify OTP
     if (lead.otp_code !== otpCode) {
-      // Increment attempts
+  
       await supabase
         .from('leads')
         .update({ otp_attempts: (lead.otp_attempts || 0) + 1 })
@@ -189,14 +187,14 @@ serve(async (req) => {
       throw new Error('Codice OTP non valido');
     }
 
-    // Check OTP expiration
+
     if (new Date() > new Date(lead.otp_expires_at)) {
       throw new Error('Codice OTP scaduto. Richiedi un nuovo codice.');
     }
 
     console.log('OTP verified successfully for lead:', leadId);
 
-    // Update lead status to queued and clear OTP
+
     const { error: updateError } = await supabase
       .from('leads')
       .update({
@@ -213,7 +211,7 @@ serve(async (req) => {
       throw new Error('Failed to update lead status');
     }
 
-    // Generate PDF and save URL
+
     console.log('Generating PDF for lead:', leadId);
     
     const { data: pdfData, error: pdfError } = await supabase.functions.invoke('generate-pdf', {
@@ -222,12 +220,12 @@ serve(async (req) => {
 
     if (pdfError || pdfData.error) {
       console.error('PDF generation error:', pdfError || pdfData.error);
-      // Continue anyway - don't fail OTP verification for PDF issues
+      
     }
 
     const pdfUrl = pdfData?.pdf_url;
 
-    // Send email with PDF link
+    
     console.log(`Sending PDF email to ${lead.user_contact?.email}`);
     
     const emailResult = await sendEmailWithPostmark(

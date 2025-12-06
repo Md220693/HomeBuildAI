@@ -20,13 +20,11 @@ serve(async (req) => {
 
     console.log(`Supplier signup request for: ${email}`);
 
-    // Create admin client to check system settings
     const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('URL') ?? '',
+      Deno.env.get('SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Check if email confirmation is required
     const { data: settingData, error: settingError } = await supabaseAdmin
       .from('system_settings')
       .select('setting_value')
@@ -43,10 +41,10 @@ serve(async (req) => {
     let authResponse;
 
     if (emailConfirmRequired) {
-      // Use normal anon client for standard signup with email confirmation
+
       const supabaseClient = createClient(
-        Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+        Deno.env.get('URL') ?? '',
+        Deno.env.get('ANON_KEY') ?? ''
       );
 
       authResponse = await supabaseClient.auth.signUp({
@@ -54,11 +52,11 @@ serve(async (req) => {
         password,
       });
     } else {
-      // Use admin client to create user with auto-confirm
+  
       authResponse = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
-        email_confirm: true, // Auto-confirm the email
+        email_confirm: true,
       });
     }
 

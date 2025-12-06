@@ -23,27 +23,35 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   useEffect(() => {
     const checkOnboardingStatus = async () => {
-      console.log('[ProtectedRoute] Checking onboarding status', { 
-        user: user?.id,
-        isInitialized,
-        currentPath: location.pathname 
-      });
+      if (import.meta.env.DEV) {
+        console.log('[ProtectedRoute] Checking onboarding status', { 
+          user: user?.id,
+          isInitialized,
+          currentPath: location.pathname 
+        });
+      }
 
       if (!isInitialized) {
-        console.log('[ProtectedRoute] Auth not initialized yet, waiting...');
+        if (import.meta.env.DEV) {
+          console.log('[ProtectedRoute] Auth not initialized yet, waiting...');
+        }
         return;
       }
 
       if (!user) {
-        console.log('[ProtectedRoute] No user after initialization');
+        if (import.meta.env.DEV) {
+          console.log('[ProtectedRoute] No user after initialization');
+        }
         setCheckingStatus(false);
         return;
       }
 
       try {
-        // Check for required role if specified
+      
         if (requireRole) {
-          console.log('[ProtectedRoute] Checking role:', requireRole);
+          if (import.meta.env.DEV) {
+            console.log('[ProtectedRoute] Checking role:', requireRole);
+          }
           const { data: roleData, error: roleError } = await supabase
             .rpc('has_role', { 
               _user_id: user.id, 
@@ -55,22 +63,26 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           }
 
           const hasRole = roleData || false;
-          console.log('[ProtectedRoute] Has required role:', hasRole);
+          if (import.meta.env.DEV) {
+            console.log('[ProtectedRoute] Has required role:', hasRole);
+          }
           setHasRequiredRole(hasRole);
 
-          // If checking for admin role, no need to check onboarding
+      
           if (requireRole === 'admin') {
             setCheckingStatus(false);
             return;
           }
         } else {
-          // No specific role required
+      
           setHasRequiredRole(true);
         }
 
-        // Check onboarding for supplier routes
+    
         if (requireRole === 'supplier' || !requireRole) {
-          console.log('[ProtectedRoute] Fetching onboarding status for user:', user.id);
+          if (import.meta.env.DEV) {
+            console.log('[ProtectedRoute] Fetching onboarding status for user:', user.id);
+          }
           const { data, error } = await supabase
             .from('suppliers')
             .select('onboarding_completato')
@@ -82,7 +94,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           }
 
           const completed = data?.onboarding_completato || false;
-          console.log('[ProtectedRoute] Onboarding status:', completed);
+          if (import.meta.env.DEV) {
+            console.log('[ProtectedRoute] Onboarding status:', completed);
+          }
           setHasCompletedOnboarding(completed);
         }
       } catch (error) {
@@ -93,10 +107,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     };
 
     checkOnboardingStatus();
-  }, [user, isInitialized, location.pathname]);
+  }, [user, isInitialized, location.pathname, requireRole]);
 
   if (!isInitialized || checkingStatus) {
-    console.log('[ProtectedRoute] Loading...', { isInitialized, checkingStatus });
+    if (import.meta.env.DEV) {
+      console.log('[ProtectedRoute] Loading...', { isInitialized, checkingStatus });
+    }
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-subtle">
         <div className="text-center space-y-4">
@@ -108,14 +124,18 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (!user) {
-    console.log('[ProtectedRoute] No user, redirecting to auth');
+    if (import.meta.env.DEV) {
+      console.log('[ProtectedRoute] No user, redirecting to auth');
+    }
     const authPath = requireRole === 'admin' ? '/admin/auth' : '/fornitori/auth';
     return <Navigate to={authPath} replace />;
   }
 
-  // Check role access
+
   if (requireRole && !hasRequiredRole) {
-    console.log('[ProtectedRoute] User does not have required role, redirecting');
+    if (import.meta.env.DEV) {
+      console.log('[ProtectedRoute] User does not have required role, redirecting');
+    }
     if (requireRole === 'admin') {
       return <Navigate to="/admin/auth" replace />;
     } else if (requireRole === 'supplier') {
@@ -123,19 +143,25 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     }
   }
 
-  // Se siamo sulla pagina di onboarding, permettiamo l'accesso
+
   if (location.pathname === '/fornitori/onboarding') {
-    console.log('[ProtectedRoute] On onboarding page, allowing access');
+    if (import.meta.env.DEV) {
+      console.log('[ProtectedRoute] On onboarding page, allowing access');
+    }
     return <>{children}</>;
   }
 
-  // Se richiediamo onboarding completato e non è completato, reindirizziamo
+
   if (requireOnboarding && !hasCompletedOnboarding) {
-    console.log('[ProtectedRoute] Onboarding required but not completed, redirecting');
+    if (import.meta.env.DEV) {
+      console.log('[ProtectedRoute] Onboarding required but not completed, redirecting');
+    }
     return <Navigate to="/fornitori/onboarding" replace />;
   }
 
-  console.log('[ProtectedRoute] All checks passed, rendering children');
+  if (import.meta.env.DEV) {
+    console.log('[ProtectedRoute] All checks passed, rendering children');
+  }
   return <>{children}</>;
 };
 
