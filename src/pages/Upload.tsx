@@ -37,8 +37,8 @@ const Upload = () => {
       if (!isValidType) {
         toast({
           variant: "destructive",
-          title: "Formato file non supportato",
-          description: `${file.name} non è nel formato corretto`
+          title: "Formato non supportato",
+          description: `Il formato di ${file.name} non è valido`
         });
         return false;
       }
@@ -47,7 +47,7 @@ const Upload = () => {
         toast({
           variant: "destructive", 
           title: "File troppo grande",
-          description: `${file.name} supera il limite di 10MB`
+          description: `${file.name} supera 10MB`
         });
         return false;
       }
@@ -73,8 +73,8 @@ const Upload = () => {
     
     if (newFiles.length > 0) {
       toast({
-        title: "File caricati con successo",
-        description: `${newFiles.length} file${newFiles.length > 1 ? '' : ''} aggiunt${newFiles.length > 1 ? 'i' : 'o'}`
+        title: "File caricati",
+        description: `${newFiles.length} file aggiunti`
       });
     }
   };
@@ -129,28 +129,24 @@ const Upload = () => {
       let planimetriaUrl: string | null = null;
       const fotoUrls: string[] = [];
 
-      // Upload planimetria only if available
       if (planimetrie.length > 0) {
         const planimetriaFile = planimetrie[0].file;
         planimetriaUrl = await uploadFileToSupabase(planimetriaFile, 'planimetrie');
         
         if (!planimetriaUrl) {
-          throw new Error('Errore nel caricamento della planimetria');
+          throw new Error('Errore caricamento planimetria');
         }
       }
 
-      // Upload foto only if available
       if (foto.length > 0) {
         for (const fotoFile of foto) {
           const fotoUrl = await uploadFileToSupabase(fotoFile.file, 'foto');
-          if (!fotoUrl) {
-            throw new Error(`Errore nel caricamento della foto ${fotoFile.file.name}`);
+          if (fotoUrl) {
+            fotoUrls.push(fotoUrl);
           }
-          fotoUrls.push(fotoUrl);
         }
       }
 
-      // Create lead in database with skip_files flag and initial renovation_scope
       const { data: lead, error } = await supabase
         .from('leads')
         .insert({
@@ -163,26 +159,21 @@ const Upload = () => {
         .select()
         .single();
 
-      if (error) {
-        throw new Error('Errore nel salvataggio del progetto');
-      }
+      if (error) throw error;
 
       toast({
-        title: skipFiles ? "Procediamo con l'intervista!" : "File caricati con successo!",
-        description: skipFiles 
-          ? "L'AI raccoglierà tutte le informazioni tramite l'intervista"
-          : "Procediamo con l'intervista AI per analizzare il tuo progetto"
+        title: skipFiles ? "Iniziamo l'intervista!" : "File caricati",
+        description: "Procediamo con l'analisi AI"
       });
 
-      // Navigate to interview page with leadId
       navigate(`/interview?leadId=${lead.id}`);
       
     } catch (error) {
       console.error('Upload error:', error);
       toast({
         variant: "destructive",
-        title: "Errore nel caricamento",
-        description: error instanceof Error ? error.message : "Riprova più tardi"
+        title: "Errore",
+        description: "Riprova più tardi"
       });
     } finally {
       setIsUploading(false);
@@ -195,7 +186,6 @@ const Upload = () => {
   const hasMinimumFiles = foto.length >= 4 || planimetrie.length >= 1;
   const canProceed = hasMinimumFiles || skipFiles;
 
-  // Cleanup preview URLs on unmount
   useEffect(() => {
     return () => {
       uploadedFiles.forEach(file => {
@@ -207,69 +197,69 @@ const Upload = () => {
   }, [uploadedFiles]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20">
+    <div className="min-h-screen bg-white">
       <Header />
       
-      <main className="container py-12">
-        <div className="max-w-6xl mx-auto">
-          {/* Enhanced Header Section */}
+      <main className="container py-8">
+        <div className="max-w-5xl mx-auto">
+          {/* Professional Header */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-12 space-y-6"
+            className="text-center mb-8 space-y-4"
           >
-            <h1 className="text-4xl md:text-5xl font-bold text-foreground">
-              Carica i tuoi documenti
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+              Carica documenti
             </h1>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              Per una stima più accurata, carica <strong className="text-accent">planimetrie o foto</strong> dell'immobile. 
-              Oppure prosegui direttamente con l'intervista AI.
+            <p className="text-gray-600 max-w-2xl mx-auto text-sm md:text-base">
+              Per una stima accurata, carica planimetrie o foto dell'immobile. 
+              Oppure procedi direttamente con l'intervista AI.
             </p>
             
-            {/* Progress Indicators */}
-            <div className="flex flex-wrap justify-center gap-6 mt-8">
-              <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border-2 ${
+            {/* Progress Indicators - Professional Style */}
+            <div className="flex justify-center gap-4 mt-6">
+              <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border ${
                 planimetrie.length >= 1 
-                  ? 'border-green-500 bg-green-500/10 text-green-600' 
-                  : 'border-border bg-background text-muted-foreground'
+                  ? 'border-green-200 bg-green-50 text-green-700' 
+                  : 'border-gray-200 bg-gray-50 text-gray-500'
               }`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  planimetrie.length >= 1 ? 'bg-green-500 text-white' : 'bg-muted'
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${
+                  planimetrie.length >= 1 ? 'bg-green-500 text-white' : 'bg-gray-300'
                 }`}>
-                  {planimetrie.length >= 1 ? <CheckCircle className="w-4 h-4" /> : '1'}
+                  {planimetrie.length >= 1 ? '✓' : '1'}
                 </div>
-                <span className="font-semibold">Planimetria</span>
+                <span className="font-medium text-sm">Planimetria</span>
               </div>
               
-              <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border-2 ${
+              <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border ${
                 foto.length >= 4 
-                  ? 'border-green-500 bg-green-500/10 text-green-600' 
-                  : 'border-border bg-background text-muted-foreground'
+                  ? 'border-green-200 bg-green-50 text-green-700' 
+                  : 'border-gray-200 bg-gray-50 text-gray-500'
               }`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  foto.length >= 4 ? 'bg-green-500 text-white' : 'bg-muted'
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${
+                  foto.length >= 4 ? 'bg-green-500 text-white' : 'bg-gray-300'
                 }`}>
-                  {foto.length >= 4 ? <CheckCircle className="w-4 h-4" /> : '4'}
+                  {foto.length >= 4 ? '✓' : '4'}
                 </div>
-                <span className="font-semibold">Foto</span>
+                <span className="font-medium text-sm">Foto</span>
               </div>
             </div>
           </motion.div>
 
-          <div className="grid lg:grid-cols-2 gap-8 mb-8">
-            {/* Upload Planimetrie */}
+          <div className="grid lg:grid-cols-2 gap-6 mb-6">
+            {/* Planimetrie Card */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1 }}
             >
-              <Card className="p-8 hover:shadow-lg transition-shadow duration-300 border-2">
-                <div className="text-center mb-6">
-                  <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <FileText className="h-8 w-8 text-primary" />
+              <Card className="p-6 border border-gray-200 hover:border-gray-300 transition-colors">
+                <div className="text-center mb-4">
+                  <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center mx-auto mb-3">
+                    <FileText className="h-5 w-5 text-blue-600" />
                   </div>
-                  <h2 className="text-2xl font-bold mb-2">Planimetrie</h2>
-                  <p className="text-muted-foreground">
+                  <h2 className="text-lg font-semibold mb-1">Planimetrie</h2>
+                  <p className="text-gray-500 text-xs">
                     PDF, JPG, PNG • Max 10MB
                   </p>
                 </div>
@@ -283,19 +273,19 @@ const Upload = () => {
                     className="hidden"
                   />
                   <div 
-                    className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 cursor-pointer ${
+                    className={`border border-dashed rounded-lg p-6 text-center transition-all cursor-pointer ${
                       isDragging 
-                        ? 'border-primary bg-primary/5 scale-105' 
-                        : 'border-border hover:border-primary hover:bg-primary/5'
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-gray-300 hover:border-blue-500 hover:bg-blue-50'
                     }`}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, 'planimetria')}
                   >
-                    <CloudUpload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-lg font-medium mb-2">Trascina le planimetrie qui</p>
-                    <p className="text-muted-foreground text-sm">
-                      o clicca per selezionare i file
+                    <CloudUpload className="h-8 w-8 text-gray-400 mx-auto mb-3" />
+                    <p className="text-sm font-medium mb-1">Trascina le planimetrie</p>
+                    <p className="text-gray-500 text-xs">
+                      o clicca per selezionare
                     </p>
                   </div>
                 </label>
@@ -306,23 +296,23 @@ const Upload = () => {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="mt-6 space-y-3"
+                      className="mt-4 space-y-2"
                     >
-                      <h3 className="font-semibold text-foreground">Planimetrie caricate:</h3>
+                      <h3 className="font-medium text-sm text-gray-700">Planimetrie caricate:</h3>
                       {planimetrie.map((uploaded) => (
                         <motion.div 
                           key={uploaded.id}
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.9 }}
-                          className="flex items-center justify-between p-3 bg-secondary rounded-xl group hover:bg-secondary/80 transition-colors"
+                          className="flex items-center justify-between p-2 bg-gray-50 rounded-lg group hover:bg-gray-100"
                         >
-                          <div className="flex items-center gap-3 min-w-0 flex-1">
-                            <FileText className="h-5 w-5 text-primary flex-shrink-0" />
-                            <span className="text-sm font-medium truncate">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <FileText className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                            <span className="text-xs font-medium truncate">
                               {uploaded.file.name}
                             </span>
-                            <span className="text-xs text-muted-foreground flex-shrink-0">
+                            <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
                               {(uploaded.file.size / 1024 / 1024).toFixed(1)}MB
                             </span>
                           </div>
@@ -330,9 +320,9 @@ const Upload = () => {
                             variant="ghost"
                             size="sm"
                             onClick={() => removeFile(uploaded.id)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3 w-3" />
                           </Button>
                         </motion.div>
                       ))}
@@ -342,20 +332,20 @@ const Upload = () => {
               </Card>
             </motion.div>
 
-            {/* Upload Foto */}
+            {/* Foto Card */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <Card className="p-8 hover:shadow-lg transition-shadow duration-300 border-2">
-                <div className="text-center mb-6">
-                  <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <Image className="h-8 w-8 text-primary" />
+              <Card className="p-6 border border-gray-200 hover:border-gray-300 transition-colors">
+                <div className="text-center mb-4">
+                  <div className="w-12 h-12 bg-emerald-50 rounded-lg flex items-center justify-center mx-auto mb-3">
+                    <Image className="h-5 w-5 text-emerald-600" />
                   </div>
-                  <h2 className="text-2xl font-bold mb-2">Foto dell'immobile</h2>
-                  <p className="text-muted-foreground">
-                    JPG, PNG • Max 10MB • Minimo 4 foto consigliate
+                  <h2 className="text-lg font-semibold mb-1">Foto immobile</h2>
+                  <p className="text-gray-500 text-xs">
+                    JPG, PNG • Max 10MB • Minimo 4 foto
                   </p>
                 </div>
                 
@@ -368,19 +358,19 @@ const Upload = () => {
                     className="hidden"
                   />
                   <div 
-                    className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 cursor-pointer ${
+                    className={`border border-dashed rounded-lg p-6 text-center transition-all cursor-pointer ${
                       isDragging 
-                        ? 'border-primary bg-primary/5 scale-105' 
-                        : 'border-border hover:border-primary hover:bg-primary/5'
+                        ? 'border-emerald-500 bg-emerald-50' 
+                        : 'border-gray-300 hover:border-emerald-500 hover:bg-emerald-50'
                     }`}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, 'foto')}
                   >
-                    <CloudUpload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-lg font-medium mb-2">Trascina le foto qui</p>
-                    <p className="text-muted-foreground text-sm">
-                      o clicca per selezionare i file
+                    <CloudUpload className="h-8 w-8 text-gray-400 mx-auto mb-3" />
+                    <p className="text-sm font-medium mb-1">Trascina le foto</p>
+                    <p className="text-gray-500 text-xs">
+                      o clicca per selezionare
                     </p>
                   </div>
                 </label>
@@ -391,19 +381,19 @@ const Upload = () => {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="mt-6"
+                      className="mt-4"
                     >
-                      <h3 className="font-semibold text-foreground mb-3">
-                        Foto caricate ({foto.length}/4+):
+                      <h3 className="font-medium text-sm text-gray-700 mb-2">
+                        Foto caricate ({foto.length}/4+)
                       </h3>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-64 overflow-y-auto">
+                      <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
                         {foto.map((uploaded) => (
                           <motion.div 
                             key={uploaded.id}
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.9 }}
-                            className="relative group aspect-square bg-secondary rounded-xl overflow-hidden"
+                            className="relative group aspect-square bg-gray-100 rounded-lg overflow-hidden"
                           >
                             {uploaded.previewUrl ? (
                               <img 
@@ -413,16 +403,15 @@ const Upload = () => {
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
-                                <Image className="h-8 w-8 text-muted-foreground" />
+                                <Image className="h-5 w-5 text-gray-400" />
                               </div>
                             )}
                             
-                            {/* File info overlay */}
-                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
                               <Button
                                 variant="secondary"
                                 size="sm"
-                                className="h-8 w-8 p-0"
+                                className="h-6 w-6 p-0"
                                 onClick={() => window.open(uploaded.previewUrl, '_blank')}
                               >
                                 <Eye className="h-3 w-3" />
@@ -430,15 +419,14 @@ const Upload = () => {
                               <Button
                                 variant="destructive"
                                 size="sm"
-                                className="h-8 w-8 p-0"
+                                className="h-6 w-6 p-0"
                                 onClick={() => removeFile(uploaded.id)}
                               >
                                 <Trash2 className="h-3 w-3" />
                               </Button>
                             </div>
                             
-                            {/* File name badge */}
-                            <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-1 truncate">
+                            <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-[10px] p-1 truncate">
                               {uploaded.file.name}
                             </div>
                           </motion.div>
@@ -451,43 +439,43 @@ const Upload = () => {
             </motion.div>
           </div>
 
-          {/* Skip Files Option */}
+          {/* Skip Option */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <Card className="p-6 mb-8 bg-muted/30 border-2">
-              <div className="flex items-start space-x-4">
+            <Card className="p-4 mb-6 bg-gray-50 border border-gray-200">
+              <div className="flex items-start space-x-3">
                 <Checkbox 
                   id="skip-files" 
                   checked={skipFiles}
                   onCheckedChange={(checked) => setSkipFiles(checked as boolean)}
                   disabled={isUploading}
-                  className="mt-1 data-[state=checked]:bg-accent data-[state=checked]:border-accent"
+                  className="mt-0.5 data-[state=checked]:bg-blue-600"
                 />
                 <div className="flex-1">
                   <label 
                     htmlFor="skip-files" 
-                    className="text-lg font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer block mb-2"
+                    className="text-sm font-medium cursor-pointer block mb-1"
                   >
-                    Procedi senza caricare file
+                    Procedi senza file
                   </label>
-                  <p className="text-muted-foreground">
-                    Non hai foto o planimetria disponibili? L'AI raccoglierà tutte le informazioni necessarie tramite un'intervista dettagliata.
+                  <p className="text-gray-600 text-xs">
+                    Non hai foto o planimetria? L'AI raccoglierà informazioni tramite intervista.
                   </p>
                   
                   {skipFiles && (
                     <motion.div 
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
-                      className="mt-4 flex items-start space-x-3 bg-amber-500/10 border border-amber-500/20 rounded-xl p-4"
+                      className="mt-3 flex items-start space-x-2 bg-amber-50 border border-amber-200 rounded-lg p-3"
                     >
-                      <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-                      <div className="text-sm">
-                        <p className="font-semibold text-amber-600 mb-1">Nota importante</p>
-                        <p className="text-foreground/80">
-                          Senza materiale visivo, la stima potrebbe essere meno accurata. L'AI farà domande più dettagliate durante l'intervista per compensare.
+                      <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                      <div className="text-xs">
+                        <p className="font-medium text-amber-700 mb-0.5">Nota</p>
+                        <p className="text-gray-700">
+                          Senza materiale visivo, la stima potrebbe essere meno accurata.
                         </p>
                       </div>
                     </motion.div>
@@ -505,20 +493,20 @@ const Upload = () => {
             className="text-center"
           >
             <Button 
-              size="xl" 
+              size="lg" 
               disabled={!canProceed || isUploading}
               onClick={handleProceedWithAI}
-              className="bg-gradient-to-r from-accent to-accent/90 hover:from-accent/90 hover:to-accent text-white shadow-2xl rounded-2xl px-12 py-6 font-bold group transition-all duration-300 hover:scale-105 hover:shadow-3xl border-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg px-8 py-4 font-semibold hover:shadow-lg transition-all disabled:opacity-50"
             >
               {isUploading ? (
                 <>
-                  <Loader2 className="mr-3 h-5 w-5 animate-spin" />
-                  Caricamento in corso...
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Caricamento...
                 </>
               ) : skipFiles ? (
-                "Inizia l'intervista AI"
+                "Inizia intervista AI"
               ) : (
-                "Analizza con l'AI"
+                "Analizza con AI"
               )}
             </Button>
             
@@ -526,9 +514,9 @@ const Upload = () => {
               <motion.p 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="text-muted-foreground mt-4 flex items-center justify-center gap-2"
+                className="text-gray-500 text-xs mt-3 flex items-center justify-center gap-1"
               >
-                <AlertCircle className="h-4 w-4" />
+                <AlertCircle className="h-3 w-3" />
                 Carica almeno 4 foto o 1 planimetria, oppure seleziona l'opzione per proseguire senza file
               </motion.p>
             )}

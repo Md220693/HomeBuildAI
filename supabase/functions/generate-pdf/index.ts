@@ -184,15 +184,32 @@ async function sendEmailWithPDF(toEmail: string, userName: string, pdfUrl: strin
 
   const emailData = {
     MessageStream: "outbound",
-    From: `BuildHomeAI <${sender}>`,
+    From: `HomeBuildAI <${sender}>`,
     To: toEmail,
-    Subject: "Il tuo Capitolato Tecnico",
+    Subject: "Il tuo Capitolato Tecnico è pronto",
     HtmlBody: `
       <p>Ciao ${userName},</p>
-      <p>Il tuo capitolato tecnico è pronto.</p>
-      <p><a href="${pdfUrl}">Scarica il PDF</a></p>
+      <p>Il tuo capitolato tecnico è stato generato con successo.</p>
+      <p>Puoi scaricare il documento cliccando sul link qui sotto:</p>
+      <p><a href="${pdfUrl}" style="font-weight: bold;">📄 Scarica il Capitolato Tecnico</a></p>
+      <p>Per qualsiasi domanda o necessità, siamo a tua disposizione.</p>
+      <br/>
+      <p>Un saluto,<br/>Il team di HomeBuildAI</p>
+      <img src="https://ibzrnleunnfjyddyjkxg.supabase.co/storage/v1/object/public/email-assets/homebuilsignature.png" alt="HomeBuildAI" width="120" style="margin-top: 10px;" />
     `,
-    TextBody: `Il tuo PDF è pronto: ${pdfUrl}`,
+    TextBody: `
+  Ciao ${userName},
+
+  Il tuo capitolato tecnico è stato generato con successo.
+
+  Puoi scaricare il PDF dal seguente link:
+  ${pdfUrl}
+
+  Per qualsiasi domanda, siamo a tua disposizione.
+
+  Un saluto,
+  Il team di HomeBuildAI
+    `,
     Tag: "capitolato",
   };
 

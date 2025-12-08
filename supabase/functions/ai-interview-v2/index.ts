@@ -1,12 +1,15 @@
+// v2.0.0 - Fixed ReferenceError userMessages bug (2025-10-06)
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
 
+// Helper function to map CAP to Regione
 function mapCapToRegione(cap: string | null): string | null {
   if (!cap) return null;
   
   const capNum = parseInt(cap);
   if (isNaN(capNum)) return null;
   
+  // Map CAP ranges to regions (Italian postal code system)
   if (capNum >= 10000 && capNum <= 10999) return 'Piemonte';
   if (capNum >= 12000 && capNum <= 14999) return 'Piemonte';
   if (capNum >= 15000 && capNum <= 18999) return 'Piemonte';
@@ -39,7 +42,8 @@ function mapCapToRegione(cap: string | null): string | null {
   return null;
 }
 
-
+// Helper: Extract location from USER messages only (not system prompt)
+// v2.0.2: Enhanced flexible location extraction (supports multiple formats)
 function extractLocationFromUserMessages(messages: any[]): {
   citta: string | null;
   cap: string | null;
@@ -51,31 +55,38 @@ function extractLocationFromUserMessages(messages: any[]): {
       .join(' ');
   };
 
-
+  // Filter only USER messages and REVERSE to search from most recent
   const userMessages = messages
     .filter(m => m.role === 'user')
-    .map(m => m.content)
-    .join(' ');
+    .reverse(); // 🎯 Search from most recent message first!
 
   let citta: string | null = null;
   let cap: string | null = null;
 
+  // Search in reverse order (most recent first)
+  for (const msg of userMessages) {
+    const content = msg.content;
 
-  const locationMatch = userMessages.match(/([a-zàèéìòùáíóúäëïöüâêîôûçñ\s'-]{3,}),?\s*(\d{5})/i);
-  if (locationMatch) {
-    citta = normalizeCity(locationMatch[1]);
-    cap = locationMatch[2];
-  }
+    // Strategy 1: City + CAP together (FLEXIBLE ORDER, case-insensitive)
+    // Matches: "Catania 95127", "95127 catania", "Catania, 95127", "catania,95127", etc.
+    const cityFirstMatch = content.match(/([a-zàèéìòùáíóúäëïöüâêîôûçñ\s'-]{3,})[,\s]*(\d{5})/i);
+    const capFirstMatch = content.match(/(\d{5})[,\s]*([a-zàèéìòùáíóúäëïöüâêîôûçñ\s'-]{3,})/i);
+    
+    if (cityFirstMatch) {
+      citta = normalizeCity(cityFirstMatch[1]);
+      cap = cityFirstMatch[2];
+      break; // ✅ Stop at first (most recent) match!
+    } else if (capFirstMatch) {
+      cap = capFirstMatch[1];
+      citta = normalizeCity(capFirstMatch[2]);
+      break; // ✅ Stop at first (most recent) match!
+    }
 
-
-  if (!citta) {
-    const capOnly = userMessages.match(/\b(\d{5})\b/);
-    if (capOnly) {
-      cap = capOnly[1];
-      // Try to find city before CAP
-      const cityBeforeCap = userMessages.match(/([a-zàèéìòùáíóúäëïöüâêîôûçñ\s'-]{3,})\s*,?\s*\d{5}/i);
-      if (cityBeforeCap) {
-        citta = normalizeCity(cityBeforeCap[1]);
+    // Strategy 2: CAP only (if city was in a previous message)
+    if (!cap) {
+      const capOnly = content.match(/\b(\d{5})\b/);
+      if (capOnly) {
+        cap = capOnly[1];
       }
     }
   }
@@ -88,8 +99,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const FUNCTION_VERSION = "1.1.3-verified";
-const DEPLOY_TIMESTAMP = "2025-10-05T18:30:00Z";
+const FUNCTION_VERSION = "2.0.2-complete-fix"; // All 3 fixes: DB columns, flexible location, better prompts
+const DEPLOY_TIMESTAMP = "2025-10-06T16:30:00Z"; // Deploy tracking
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -102,7 +113,7 @@ serve(async (req) => {
     
     console.log(`
 🚀 ========================================
-🚀 ai-interview v${FUNCTION_VERSION}
+🚀 ai-interview-v2 v${FUNCTION_VERSION}
 🚀 Deploy: ${DEPLOY_TIMESTAMP}
 🚀 Lead ID: ${leadId}
 🚀 ========================================
@@ -117,12 +128,12 @@ serve(async (req) => {
       throw new Error('DEEPSEEK_API_KEY is not configured');
     }
 
-   
+    // Initialize Supabase client
     const supabaseUrl = Deno.env.get('URL')!;
     const supabaseKey = Deno.env.get('SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-  
+    // Get lead data to check for existing files, skip flag, and renovation scope
     const { data: leadData, error: leadError } = await supabase
       .from('leads')
       .select('planimetria_url, foto_urls, skip_files, renovation_scope, target_rooms')
@@ -148,7 +159,7 @@ serve(async (req) => {
       target_rooms: targetRooms
     });
 
-   
+    // Get system interview prompt from database
     const { data: promptData, error: promptError } = await supabase
       .from('ai_prompts')
       .select('content')
@@ -156,30 +167,32 @@ serve(async (req) => {
       .eq('is_active', true)
       .single();
 
-  
+    // Fix #3: Context-Aware File Handling
     let fileContext = '';
     if (hasSkippedFiles) {
       fileContext = `
-📁 IMPORTANTE: L'utente ha scelto di procedere SENZA caricare foto o planimetria.
-- NON chiedere mai di caricare file durante l'intervista
-- Procedi direttamente con le domande dettagliate
+📁 SENZA DOCUMENTI VISIVI: L'utente ha scelto di procedere SENZA foto o planimetria.
+- CHIEDI in dettaglio: metrature, stato attuale (vecchio/recente), desiderata per ogni ambiente
+- Esempi: "Che dimensioni ha il bagno? In che stato è attualmente? Cosa vuoi rifare?"
+- Più dettagli raccogli, più accurata sarà la stima
 `;
     } else if (hasPlanimetria || hasFoto) {
       fileContext = `
-📁 OTTIMO: L'utente ha caricato ${hasPlanimetria ? 'la planimetria' : ''}${hasPlanimetria && hasFoto ? ' e ' : ''}${hasFoto ? `${leadData.foto_urls.length} foto` : ''}.
-- Tieni in considerazione questi documenti durante l'intervista
-- NON chiedere di caricare altri file
+📁 CON DOCUMENTI VISIVI: L'utente ha caricato ${hasPlanimetria ? 'planimetria' : ''}${hasPlanimetria && hasFoto ? ' e ' : ''}${hasFoto ? `${leadData.foto_urls.length} foto` : ''}.
+- Analizza attentamente i documenti visivi
+- Fai riferimento a ciò che vedi: "Dalla planimetria vedo che il bagno è 8mq, confermi?"
+- CHIEDI comunque dettagli su stato e desiderata: "Cosa vuoi cambiare in questo ambiente?"
 `;
     } else {
       fileContext = `
-📁 NOTA: L'utente non ha ancora caricato planimetria o foto.
-- Se ha i documenti, suggerisci gentilmente di caricarli
-- Se non li ha, procedi comunque con domande dettagliate
-- NON bloccare l'intervista per i file mancanti
+📁 DOCUMENTI OPZIONALI: L'utente può caricare foto/planimetria ma non è obbligatorio.
+- Se ha documenti, suggerisci gentilmente: "Se hai foto o planimetria, aiutano molto"
+- Se non li ha, CHIEDI dettagli approfonditi su ogni ambiente
+- Procedi sempre con l'intervista, documenti o meno
 `;
     }
 
-   
+    // Build scope context
     let scopeContext = '';
     if (renovationScope === 'partial' && targetRooms.length > 0) {
       scopeContext = `
@@ -202,45 +215,72 @@ serve(async (req) => {
 `;
     }
 
-    
-    let systemPrompt = `Tu sei un intervistatore AI per ristrutturazioni edilizie. [v1.1.2]
+    // Fix #2: Professional System Prompt con flussi strutturati
+  let systemPrompt = `Sei un consulente AI specializzato in ristrutturazioni edilizie. [v3.0.0-no-email]
 
-🎯 OBIETTIVO: Raccogliere informazioni per capitolato tecnico.
+🎯 OBIETTIVO: Condurre un'intervista professionale per raccogliere TUTTI i dettagli necessari a un capitolato tecnico accurato.
 
-      📋 DOMANDE ESSENZIALI:
-      1. In quale CITTÀ e CAP si trova l'immobile? (es: Milano, 20100) - OBBLIGATORIO
-      2. Cosa vuoi ristrutturare? (tutta la casa o solo un ambiente?)
-      3. Quanti mq?
-      4. Che lavori servono?
-      5. Qualità materiali? (economico/standard/premium)
-      6. Budget orientativo?
-      7. OBBLIGATORIO: "Per inviarti il capitolato, qual è la tua EMAIL?" (chiedi SEMPRE dopo budget)
+📋 FLUSSO INTERVISTA:
 
-🚫 REGOLE:
-- UNA DOMANDA ALLA VOLTA (max 30 parole)
-- Tono amichevole e conversazionale
-- NON generare preventivi
+1️⃣ LOCATION (OBBLIGATORIO):
+   "In quale città e CAP si trova l'immobile?" (es: Milano, 20100)
 
-      ✅ QUANDO HAI RACCOLTO TUTTE LE 7 INFORMAZIONI ESSENZIALI, SCRIVI ESATTAMENTE:
-      "Perfetto! Ho tutte le informazioni necessarie. Ora genererò il capitolato tecnico. COMPLETATO"
-      
-      IMPORTANTE: 
-      - La parola COMPLETATO deve essere presente per segnalare la fine
-      - Scrivi ESATTAMENTE quella frase con COMPLETATO alla fine
-      - PRIMA di completare, assicurati di aver raccolto anche l'EMAIL
-      
-      ⚠️ VALIDAZIONE OBBLIGATORIA PRIMA DI COMPLETARE:
-      - Email DEVE essere presente (formato valido: xxx@yyy.zzz)
-      - Location DEVE contenere CITTÀ e CAP a 5 cifre (es: Milano, 20100)
-      - Se manca UNO di questi dati, NON completare l'intervista
-      - Chiedi di nuovo gentilmente i dati mancanti prima di procedere
+2️⃣ SCOPE - Determina subito se COMPLETA o PARZIALE:
+   "Vuoi ristrutturare l'intera casa o solo alcuni ambienti specifici?"
+
+═══════════════════════════════════════════════
+📐 FLUSSO COMPLETO (intera casa):
+═══════════════════════════════════════════════
+3️⃣ "Quanti mq totali ha la casa?"
+4️⃣ "Quante camere da letto ci sono?" → "Dimensioni orientative?"
+5️⃣ "Soggiorno/sala? Dimensioni?"
+6️⃣ "Quanti bagni?" → "Dimensioni di ciascuno?"
+7️⃣ "Cucina? Dimensioni?" → "Vuoi cambiare layout?"
+8️⃣ "Ci sono terrazzi, balconi, corridoi?"
+9️⃣ "Vuoi rifare anche infissi esterni?"
+🔟 "Che lavori servono?"
+   • Impianti: "Elettrico e idraulico entrambi?"
+   • Pavimenti: "Su tutta la casa?"
+   • Demolizioni: "Cambi murature/layout interno?"
+1️⃣1️⃣ "Qualità materiali?" (economico/standard/premium)
+1️⃣2️⃣ "Budget orientativo?"
+
+═══════════════════════════════════════════════
+🎯 FLUSSO PARZIALE (solo alcuni ambienti):
+═══════════════════════════════════════════════
+3️⃣ "Quali ambienti specifici?" (bagno, cucina, camera, etc.)
+4️⃣ Per OGNI ambiente:
+   • "Dimensioni?"
+   • "In che stato è attualmente?" (vecchio/recente/da rifare)
+   • "Cosa vuoi rifare esattamente?" (sanitari, piastrelle, impianti, etc.)
+   • "Cambi il layout o mantieni com'è?"
+5️⃣ "Qualità materiali?" (economico/standard/premium)
+6️⃣ "Budget orientativo?"
+
+═══════════════════════════════════════════════
+
+💬 STILE INTERVISTA:
+- UNA domanda alla volta (max 30 parole)
+- Tono chiaro, semplice ma competente
+- Se risposta generica → chiedi dettagli SUBITO prima di andare avanti
+- NON generare preventivi, NON inventare dati
+
+✅ COMPLETAMENTO:
+Quando hai raccolto TUTTI i dati (location, scope, dettagli ambienti), scrivi:
+"Perfetto! Ho tutte le informazioni necessarie. Ora genererò il capitolato tecnico. COMPLETATO"
+
+⚠️ VALIDAZIONE OBBLIGATORIA PRIMA DI COMPLETARE:
+- Location con CITTÀ e CAP a 5 cifre
+- Dettagli completi su TUTTI gli ambienti coinvolti
+- Se manca QUALCOSA, chiedilo gentilmente prima di completare
 
 ${fileContext}
 
 ${scopeContext}`;
 
 
-   
+
+    // Prepare messages for DeepSeek API
     const apiMessages = [
       { role: 'system', content: systemPrompt },
       ...messages
@@ -248,7 +288,7 @@ ${scopeContext}`;
 
     console.log('Calling DeepSeek API with messages:', apiMessages);
 
-  
+    // Call DeepSeek API with balanced constraints
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -258,9 +298,9 @@ ${scopeContext}`;
       body: JSON.stringify({
         model: 'deepseek-chat',
         messages: apiMessages,
-        max_tokens: 150,
-        temperature: 0.3,
-        stop: ['<!--'],
+        max_tokens: 150, // Limite ristretto per domande brevi (max 30 parole)
+        temperature: 0.3, // Lower temperature for more predictable responses
+        stop: ['<!--'], // Only stop at completion tag
       }),
     });
 
@@ -275,13 +315,13 @@ ${scopeContext}`;
 
     console.log('Raw DeepSeek response:', aiResponse);
     
-   
+    // FIX FASE 4: Handle empty or invalid AI responses
     if (!aiResponse || aiResponse.trim() === '') {
       console.error('❌ AI returned empty response, using fallback');
       aiResponse = "Mi scusi, ho avuto un problema tecnico. Per favore, può ripetere la sua ultima risposta?";
     }
     
-   
+    // MINIMAL SAFETY CHECK: Only prevent extreme inappropriate responses
     const shouldForceComplete = 
       aiResponse.length > 1000 && 
       /preventivo\s+vincolante|€\s*\d+[\d.,]*\s*-\s*€\s*\d+[\d.,]*/.test(aiResponse);
@@ -294,11 +334,11 @@ ${scopeContext}`;
 
     console.log('Processed AI response:', aiResponse);
 
-   
+    // FASE 1: Check multiple completion signals
     const responseText = aiResponse.trim();
     const responseLower = responseText.toLowerCase();
     
- 
+    // Primary completion check
     const isComplete = responseText.includes('COMPLETATO') || 
                       responseText.includes('<!--INTERVIEW_COMPLETE-->') || 
                       responseText.includes('INTERVIEW_COMPLETE');
@@ -311,21 +351,18 @@ ${scopeContext}`;
 
     console.log('Checking interview completion:', { isComplete });
 
-  
+    // ALWAYS analyze conversation for scope detection (not just when complete)
     const conversationOriginal = messages.map((m: any) => m.content).join(' ');
     const conversationText = conversationOriginal.toLowerCase();
     let detectedRenovationScope = 'unknown';
     let detectedTargetRooms: string[] = [];
     let isMicroIntervention = false;
     
- 
-    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-    const emailMatches = conversationOriginal.match(emailRegex);
-    const detectedEmail = emailMatches ? emailMatches[emailMatches.length - 1] : null;
     
-  
+    // Extract location using helper function (v2.0.0 - scope fixed)
     const { citta: detectedCitta, cap: detectedCap } = extractLocationFromUserMessages(messages);
     
+    // Extract nome and cognome from conversation
     const nomeMatch = conversationOriginal.match(/(?:nome|mi chiamo|sono)\s*[:\s]+([A-ZÀÈÉÌÒÙ][a-zàèéìòù]+)/i);
     const cognomeMatch = conversationOriginal.match(/cognome\s*[:\s]+([A-ZÀÈÉÌÒÙ][a-zàèéìòù]+)/i);
     const detectedNome = nomeMatch?.[1]?.trim() || null;
@@ -337,11 +374,12 @@ ${scopeContext}`;
       regione: mapCapToRegione(detectedCap),
       normalized: detectedCitta ? `✅ "${detectedCitta}"` : '❌ not found'
     });
-    console.log('👤 Contact extracted:', { detectedNome, detectedCognome, detectedEmail });
-    console.log('📍 USER messages only:', userMessages.substring(0, 200));
-    console.log('📍 RAW input sample:', conversationOriginal.substring(0, 300));
+    console.log('👤 Contact extracted:', { detectedNome, detectedCognome});
 
-
+    // Fix #1: Robust Scope Detection - Prioritize explicit user intent
+    const userSaidFull = /tutta la casa|intera casa|ristrutturazione completa|casa completa|tutto l'immobile|intero appartamento/i.test(conversationText);
+    const userSaidPartial = /solo (bagno|cucina|camera)|parziale/i.test(conversationText);
+    
     const partialKeywords = [
       'solo bagno', 'solo cucina', 'solo intonaco', 'solo pittura', 'solo soffitto',
       'tetto del bagno', 'soffitto del bagno', 'un bagno', 'rifare il soffitto',
@@ -350,16 +388,23 @@ ${scopeContext}`;
     
     const hasPartialKeywords = partialKeywords.some(kw => conversationText.includes(kw));
     
-    if (hasPartialKeywords) {
+    // PRIORITÀ 1: Se user dice esplicitamente "tutta la casa" → FULL
+    if (userSaidFull && !userSaidPartial) {
+      detectedRenovationScope = 'full';
+      detectedTargetRooms = []; // Reset rooms per full renovation
+      console.log('🏠 Detected FULL HOUSE renovation from explicit user intent');
+    } 
+    // PRIORITÀ 2: Se user dice "solo bagno/cucina" O micro-keywords → PARTIAL
+    else if (hasPartialKeywords || userSaidPartial) {
       detectedRenovationScope = 'partial';
       console.log('🔍 Detected PARTIAL scope from conversation');
-
-     
+      
+      // Extract room
       if (conversationText.includes('bagno')) detectedTargetRooms.push('bagno');
       if (conversationText.includes('cucina')) detectedTargetRooms.push('cucina');
       if (conversationText.includes('camera')) detectedTargetRooms.push('camera');
       
-
+      // Detect micro-intervention (very small job)
       if (conversationText.includes('solo intonaco') || 
           conversationText.includes('solo pittura') ||
           conversationText.includes('tetto') || 
@@ -367,36 +412,28 @@ ${scopeContext}`;
         isMicroIntervention = true;
         console.log('🎯 Detected MICRO-INTERVENTION');
       }
-    } else if (conversationText.includes('tutta la casa') || 
-               conversationText.includes('casa completa') ||
-               conversationText.includes('intero appartamento') ||
-               conversationText.includes('tutto') ||
-               conversationText.includes("tutto l'immobile") ||
-               conversationText.includes("tutto l'appartamento") ||
-               conversationText.includes('completamente') ||
-               conversationText.includes('completa')) {
-      detectedRenovationScope = 'full';
-      console.log('🏠 Detected FULL renovation scope');
     }
 
     console.log('Final scope analysis:', { detectedRenovationScope, detectedTargetRooms, isMicroIntervention });
 
+    // FASE 2: Multi-Level Fallback System (CASE-INSENSITIVE)
     const conversationLower = conversationText.toLowerCase();
     const lastUserMessage = (messages[messages.length - 1]?.content || '').toLowerCase();
     const messageCount = messages.length;
     
-
+    // Fallback Level 1: AI explicitly signals completion
     const hasCompletionPhrase = conversationLower.includes('tutte le informazioni') || 
                                  conversationLower.includes('ho tutte le informazioni') ||
                                  conversationLower.includes('completato');
     
+    // Fallback Level 2: User says "no" to budget question (last question)
     const userRefusedBudget = (lastUserMessage === 'no' || lastUserMessage === 'no grazie') && 
                                conversationLower.includes('budget');
     
-
+    // Interview status logging
     console.log('📊 Interview Status:', {
       messageCount,
-      hasEmail: /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(conversationOriginal),
+    //  hasEmail: /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(conversationOriginal),
       hasCityCAP: !!(detectedCitta && detectedCap),
       hasScope: detectedRenovationScope !== 'unknown',
       isMarkedComplete: isComplete
@@ -409,122 +446,83 @@ ${scopeContext}`;
       detectedScope: detectedRenovationScope
     });
     
-
+    // ====== PRE-COMPLETION VALIDATION (CRITICAL) ======
     const hasValidLocation = detectedCap && detectedCitta;
-    const hasValidEmail = detectedEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(detectedEmail);
+   // const hasValidEmail = detectedEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(detectedEmail);
     
-    if ((isComplete || hasCompletionPhrase) && (!hasValidEmail || !hasValidLocation)) {
+    // If AI wants to complete but essential data is missing, force re-prompt
+    if ((isComplete || hasCompletionPhrase) && !hasValidLocation) {
       const missingInfo = [];
-      if (!hasValidEmail) missingInfo.push('email');
-      if (!hasValidLocation) missingInfo.push('città e CAP (es: Milano, 20100)');
+    //  if (!hasValidEmail) missingInfo.push('email');
+      missingInfo.push('città e CAP (es: Milano, 20100)');
       
-      console.log('⚠️ Blocking completion - missing data:', missingInfo);
+     // console.log('⚠️ Blocking completion - missing data:', missingInfo);
       
       return new Response(JSON.stringify({
-        response: `Prima di completare, ho bisogno di: ${missingInfo.join(', ')}. Puoi fornirmeli?`,
+        response: `Prima di procedere, ho bisogno ancora di: ${missingInfo.join(' e ')}. Puoi fornirmeli?`,
         interview_complete: false
       }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
     
-    if (isComplete || 
-        (detectedRenovationScope !== 'unknown' && hasCompletionPhrase) ||
-        userRefusedBudget) {
-      console.log('💾 Saving interview completion data...');
+    // If AI says complete AND we have essential data, mark as complete
+    if ((isComplete || hasCompletionPhrase) && hasValidLocation) {
+      console.log('✅ INTERVIEW VALIDATED AND COMPLETED');
       
-      const interviewData = {
-        location: detectedCap ? `${detectedCitta}, ${detectedCap}` : 'Non specificato',
-        client_info: { 
-          email: detectedEmail,
-          nome: detectedNome,
-          cognome: detectedCognome
-        },
-        project_details: {
-          city: detectedCitta,
-          postal_code: detectedCap,
-          renovation_scope: detectedRenovationScope,
-          target_rooms: detectedTargetRooms,
-          is_micro_intervention: isMicroIntervention
-        },
-        conversation: messages,
-        scope_detected: detectedRenovationScope,
-        target_rooms: detectedTargetRooms,
-        is_micro_intervention: isMicroIntervention,
-        metadata: {
-          completed_at: new Date().toISOString(),
-          message_count: messages.length,
-          completion_trigger: isComplete ? 'ai_signal' : 
-                            hasCompletionPhrase ? 'completion_phrase' :
-                            userRefusedBudget ? 'budget_refused' : 'message_threshold'
-        }
-      };
-
-      const scopeData = {
-        status: 'completed',
-        detected_scope: detectedRenovationScope,
-        target_rooms: detectedTargetRooms,
-        is_micro_intervention: isMicroIntervention,
-        timestamp: new Date().toISOString(),
-        conversation_summary: conversationText.substring(0, 500)
-      };
-
-      let conversationalResponse = aiResponse;
-      const tagIndex = aiResponse.indexOf('<!--INTERVIEW_COMPLETE');
-      if (tagIndex > 0) {
-        conversationalResponse = aiResponse.substring(0, tagIndex).trim();
-      }
-
+      // Update the lead in database - SAVE TO DEDICATED COLUMNS ✅
       const { error: updateError } = await supabase
         .from('leads')
         .update({
           status: 'interview_completed',
-          user_contact: {
+          citta: detectedCitta,                    // ✅ CRITICO: Salva in colonna dedicata
+          cap: detectedCap,                        // ✅ CRITICO: Salva in colonna dedicata
+          regione: mapCapToRegione(detectedCap),   // ✅ CRITICO: Salva in colonna dedicata
+          interview_data: {
             nome: detectedNome,
             cognome: detectedCognome,
-            email: detectedEmail,
-            telefono: null,
-            indirizzo: detectedCitta && detectedCap ? `${detectedCitta}, ${detectedCap}` : null
-          },
-          renovation_scope: detectedRenovationScope,
-          target_rooms: detectedTargetRooms.length > 0 ? detectedTargetRooms : null,
-          scope_json: scopeData,
-          interview_data: interviewData,
-          cap: detectedCap,
-          citta: detectedCitta,
-          regione: mapCapToRegione(detectedCap)
+            //email: detectedEmail,
+            location: `${detectedCitta}, ${detectedCap}`,
+            citta: detectedCitta,
+            cap: detectedCap,
+            regione: mapCapToRegione(detectedCap),
+            renovation_scope: detectedRenovationScope,
+            target_rooms: detectedTargetRooms,
+            is_micro_intervention: isMicroIntervention,
+            conversation: messages
+          }
         })
         .eq('id', leadId);
 
       if (updateError) {
-        console.error('❌ Failed to update lead:', updateError);
-      } else {
-        console.log('✅ Lead updated successfully with full conversation:', { detectedRenovationScope, detectedTargetRooms, isMicroIntervention, messageCount: messages.length });
+        console.error('Error updating lead:', updateError);
       }
 
-      return new Response(JSON.stringify({ 
-        response: conversationalResponse,
-        interview_complete: true,
-        collected_data: interviewData
+      return new Response(JSON.stringify({
+        response: aiResponse.replace('COMPLETATO', '').trim(),
+        interview_complete: true
       }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    return new Response(JSON.stringify({ 
+    // Not complete yet - return AI response
+    return new Response(JSON.stringify({
       response: aiResponse,
       interview_complete: false
     }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
-  } catch (error) {
-    console.error('Error in ai-interview function:', error);
+  } catch (error: any) {
+    console.error('Error in ai-interview-v2 function:', error);
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'An error occurred during the interview'
+      error: error.message,
+      response: 'Mi scusi, si è verificato un errore. Può ripetere l\'ultima risposta?',
+      interview_complete: false 
     }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 });

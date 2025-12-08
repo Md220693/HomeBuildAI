@@ -153,7 +153,7 @@ const Footer = () => {
               </div>
               <div className="hidden md:block">•</div>
               <div className="text-center md:text-left">
-                <span>Email: info@homebuildai.it</span>
+                <span>Email: info@homebuildai.site</span>
               </div>
               <div className="hidden md:block">•</div>
               <div className="text-center md:text-left">

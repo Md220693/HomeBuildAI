@@ -9,17 +9,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSearchParams, useNavigate } from "react-router-dom";
 
 interface Message {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
 }
 
-const Interview = () => {
+export default function Interview() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [leadId, setLeadId] = useState<string | null>(null);
-  const [responseTimeout, setResponseTimeout] = useState<NodeJS.Timeout | null>(null);
   const [showForceComplete, setShowForceComplete] = useState(false);
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
@@ -28,306 +27,174 @@ const Interview = () => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const id = searchParams.get('leadId');
+    const id = searchParams.get("leadId");
     if (!id) {
       toast({
         variant: "destructive",
         title: "Errore",
-        description: "ID progetto mancante. Torna alla pagina di upload."
+        description: "ID progetto mancante. Torna alla pagina di upload.",
       });
-      navigate('/upload');
+      navigate("/upload");
       return;
     }
-    
     setLeadId(id);
-    
-    // Start with AI greeting
-    setMessages([{
-      role: 'assistant',
-      content: 'Ciao! Sono il consulente AI di BuildHomeAI. Ti farò alcune domande per capire meglio il tuo progetto di ristrutturazione e fornirti un capitolato personalizzato basato su dati reali del settore edilizio. Iniziamo: che tipo di immobile devi ristrutturare?'
-    }]);
-  }, [searchParams, toast, navigate]);
+    setMessages([
+      {
+        role: "assistant",
+        content:
+          "Ciao! Sono il consulente AI di BuildHomeAI. Ti farò alcune domande per capire meglio il tuo progetto di ristrutturazione. Iniziamo: che tipo di immobile devi ristrutturare?",
+      },
+    ]);
+  }, []);
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
-
-  // Auto-focus input after AI response
-  useEffect(() => {
-    if (!isLoading && !isComplete && messages.length > 0) {
-      // Small delay to ensure DOM is ready
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
-    }
-  }, [messages, isLoading, isComplete]);
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (responseTimeout) {
-        clearTimeout(responseTimeout);
-      }
-    };
-  }, [responseTimeout]);
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading || !leadId) return;
 
-    const userMessage: Message = { role: 'user', content: input };
+    const userMessage: Message = { role: "user", content: input };
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     setInput("");
     setIsLoading(true);
-    setShowForceComplete(false);
-
-    // Set timeout for responses longer than 60 seconds
-    const timeoutId = setTimeout(() => {
-      console.warn('🚨 Response timeout reached');
-      setShowForceComplete(true);
-      toast({
-        variant: "destructive",
-        title: "Risposta lenta",
-        description: "La risposta sta impiegando più tempo del previsto. Puoi forzare il completamento se necessario.",
-      });
-    }, 60000);
-    
-    setResponseTimeout(timeoutId);
 
     try {
-      const { data, error } = await supabase.functions.invoke('ai-interview-v2', {
-        body: {
-          leadId,
-          messages: newMessages
+      const { data, error } = await supabase.functions.invoke(
+        "ai-interview-v2",
+        {
+          body: {
+            leadId,
+            messages: newMessages,
+          },
         }
-      });
+      );
 
       if (error) throw error;
 
-      if (data.error) {
-        throw new Error(data.error);
-      }
+      const aiMessage: Message = {
+        role: "assistant",
+        content: data.response,
+      };
+      setMessages((prev) => [...prev, aiMessage]);
 
-      // Clear timeout since we got a response
-      if (responseTimeout) {
-        clearTimeout(responseTimeout);
-        setResponseTimeout(null);
-      }
-
-      // NO FRONTEND SAFETY CHECKS
-      // Let backend handle all content validation
-      // Frontend just displays what backend sends
-
-      const aiMessage: Message = { role: 'assistant', content: data.response };
-      setMessages(prev => [...prev, aiMessage]);
-
-      // Check if interview is complete
       if (data.interview_complete) {
         setIsComplete(true);
         toast({
           title: "Intervista completata!",
-          description: "Tutte le informazioni sono state raccolte. Procediamo con la generazione del capitolato.",
+          description: "Prepariamo ora il tuo capitolato.",
         });
-        
-        // Navigate to contact verification before generating capitolato
         setTimeout(() => {
           navigate(`/contact-verification?leadId=${leadId}`);
-        }, 2000);
+        }, 1500);
       }
-
-    } catch (error) {
-      console.error('Error sending message:', error);
-      
-      // Clear timeout on error
-      if (responseTimeout) {
-        clearTimeout(responseTimeout);
-        setResponseTimeout(null);
-      }
-      
+    } catch (err) {
+      console.error(err);
       toast({
         variant: "destructive",
         title: "Errore di comunicazione",
-        description: "Si è verificato un errore. Riprova."
+        description: "Riprova a inviare il messaggio.",
       });
-      
-      // After multiple errors, show force complete option
-      if (messages.length > 8) { // If there are many messages already
-        setShowForceComplete(true);
-      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const forceCompleteInterview = async () => {
-    if (!leadId) return;
-    
-    try {
-      // Force update the lead to completed status
-      const { error } = await supabase
-        .from('leads')
-        .update({ 
-          status: 'interview_completed',
-          scope_json: {
-            status: 'force_completed',
-            timestamp: new Date().toISOString(),
-            reason: 'user_forced_or_safety_trigger'
-          }
-        })
-        .eq('id', leadId);
-
-      if (error) throw error;
-
-      setIsComplete(true);
-      toast({
-        title: "Intervista forzatamente completata",
-        description: "Procediamo con le informazioni raccolte finora.",
-      });
-      
-      setTimeout(() => {
-        navigate(`/contact-verification?leadId=${leadId}`);
-      }, 2000);
-      
-    } catch (error) {
-      console.error('Error forcing completion:', error);
-      toast({
-        variant: "destructive",
-        title: "Errore nel completamento forzato",
-        description: "Riprova o contatta il supporto."
-      });
-    }
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-subtle">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col">
       <Header />
-      
-      <main className="container py-12">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-foreground mb-4">
-              Consulenza AI personalizzata
-            </h1>
-            <p className="text-xl text-muted-foreground">
-              Rispondi a poche domande guidate. Non serve essere esperti: l'AI ti spiega i termini tecnici e traduce le tue risposte in un capitolato comprensibile anche per le imprese.
-            </p>
-          </div>
 
-          <Card className="p-6 mb-6">
+      <main className="flex-1 pt-6 pb-10 px-4 flex justify-center">
+        <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Chat Section */}
+          <Card className="lg:col-span-2 p-6 shadow-lg rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200">
             <div className="flex items-center gap-2 mb-4">
               <MessageCircle className="h-6 w-6 text-primary" />
               <h2 className="text-xl font-semibold">Chat con il Consulente AI</h2>
-              {isComplete && <CheckCircle className="h-6 w-6 text-green-600 ml-auto" />}
             </div>
-            
+
             {/* Messages */}
-            <div className="space-y-4 mb-6 min-h-[400px] max-h-[500px] overflow-y-auto" id="messages-container">
-              {messages.map((message, index) => (
+            <div className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-2 rounded-lg">
+              {messages.map((m, i) => (
                 <div
-                  key={index}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  key={i}
+                  className={`flex ${
+                    m.role === "user" ? "justify-end" : "justify-start"
+                  }`}
                 >
                   <div
-                    className={`max-w-[80%] p-4 rounded-lg ${
-                      message.role === 'user'
-                        ? 'bg-primary text-primary-foreground ml-4'
-                        : 'bg-secondary text-secondary-foreground mr-4'
+                    className={`max-w-[80%] p-3 rounded-xl text-sm leading-relaxed shadow-sm ${
+                      m.role === "user"
+                        ? "bg-primary text-white"
+                        : "bg-slate-100 text-slate-900"
                     }`}
                   >
-                    <p className="whitespace-pre-wrap">{message.content}</p>
+                    {m.content}
                   </div>
                 </div>
               ))}
-              
+
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-secondary text-secondary-foreground p-4 rounded-lg mr-4">
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Il consulente sta scrivendo...</span>
-                    </div>
+                  <div className="bg-slate-100 text-slate-700 p-3 rounded-xl flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Sta scrivendo...</span>
                   </div>
                 </div>
               )}
-              
-              {/* Invisible element for scrolling to */}
+
               <div ref={messagesEndRef} />
             </div>
 
             {/* Input */}
             {!isComplete && (
-              <div className="space-y-3">
-                <div className="flex gap-2">
-                  <Input
-                    ref={inputRef}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="Scrivi la tua risposta..."
-                    onKeyPress={handleKeyPress}
-                    disabled={isLoading}
-                    autoFocus
-                    className="flex-1"
-                  />
-                  <Button
-                    onClick={sendMessage}
-                    disabled={!input.trim() || isLoading}
-                    variant="hero"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-                
-                {/* Force Complete Button (Emergency) */}
-                {showForceComplete && (
-                  <div className="text-center p-3 bg-orange-50 rounded-lg border border-orange-200">
-                    <p className="text-orange-800 text-sm mb-2">
-                      🚨 Sembra che ci siano dei problemi con l'intervista.
-                    </p>
-                    <Button
-                      onClick={forceCompleteInterview}
-                      variant="outline"
-                      size="sm"
-                      className="border-orange-300 text-orange-700 hover:bg-orange-100"
-                    >
-                      Completa Comunque l'Intervista
-                    </Button>
-                  </div>
-                )}
+              <div className="mt-4 flex gap-2">
+                <Input
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Scrivi la tua risposta..."
+                  disabled={isLoading}
+                  className="flex-1"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") sendMessage();
+                  }}
+                />
+                <Button
+                  variant="hero"
+                  disabled={!input.trim() || isLoading}
+                  onClick={sendMessage}
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
               </div>
             )}
 
             {isComplete && (
-              <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
-                <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                <p className="text-green-800 font-semibold">Intervista completata!</p>
-                <p className="text-green-700 text-sm">
-                  Stiamo preparando il tuo capitolato personalizzato...
+              <div className="mt-4 p-4 bg-green-50 rounded-xl text-center border border-green-200">
+                <CheckCircle className="w-6 h-6 text-green-600 mx-auto mb-2" />
+                <p className="font-semibold text-green-700">
+                  Intervista completata!
+                </p>
+                <p className="text-green-600 text-sm">
+                  Stiamo preparando il tuo capitolato...
                 </p>
               </div>
             )}
           </Card>
 
-          {/* Info sidebar */}
-          <Card className="p-4 bg-blue-50 border-blue-200">
-            <h3 className="font-semibold text-blue-900 mb-2">💡 Suggerimenti</h3>
-            <ul className="text-sm text-blue-800 space-y-1">
-              <li>• Sii specifico nelle risposte per ottenere un capitolato più accurato</li>
-              <li>• Non esitare a chiedere chiarimenti sui termini tecnici</li>
-              <li>• L'intervista richiede circa 5-10 minuti</li>
+          {/* Sidebar */}
+          <Card className="p-5 rounded-2xl shadow-md h-fit bg-blue-50 border-blue-200">
+            <h3 className="text-lg font-semibold text-blue-900 mb-3">💡 Suggerimenti</h3>
+            <ul className="text-blue-800 text-sm space-y-2">
+              <li>• Sii specifico nelle risposte</li>
+              <li>• Chiedi chiarimenti sui termini tecnici</li>
+              <li>• L'intervista dura 5-10 minuti</li>
             </ul>
           </Card>
         </div>
       </main>
     </div>
   );
-};
-
-export default Interview;
+}
