@@ -7,7 +7,6 @@ const FAQSection = () => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Auto-close function
   const startAutoCloseTimer = () => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);

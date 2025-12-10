@@ -13,6 +13,8 @@ const Header = () => {
   const [scrollProgress, setScrollProgress] = useState(0);
   const headerRef = useRef<HTMLHeadElement>(null);
 
+  const isHomePage = location.pathname === '/';
+
   useEffect(() => {
     const handleScroll = () => {
       const scrollY = window.scrollY;
@@ -20,7 +22,6 @@ const Header = () => {
       setScrollProgress(progress);
       setIsScrolled(scrollY > 10);
     };
-    
 
     let ticking = false;
     const onScroll = () => {
@@ -35,36 +36,30 @@ const Header = () => {
     
     window.addEventListener('scroll', onScroll, { passive: true });
     
-
     handleScroll();
     
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-
   const handleLogoClick = () => {
     if (location.pathname === '/') {
-    
       if (window.scrollY > 100) {
-      
         window.scrollTo({
           top: 0,
           behavior: 'smooth'
         });
       } else {
-      
         navigate('/');
       }
     } else {
-    
       navigate('/');
     }
   };
 
-  const navItems = [
+  const navItems = isHomePage ? [
     { href: "#come-funziona", label: "Come funziona", icon: Calculator },
     { href: "#vantaggi", label: "Perché sceglierci", icon: Star },
-  ];
+  ] : [];
 
   const isActive = (href: string) => {
     if (href === '/') return location.pathname === '/';
@@ -74,6 +69,16 @@ const Header = () => {
   const bgOpacity = Math.min(scrollProgress * 0.95, 0.95);
   const blurAmount = Math.min(scrollProgress * 20, 20);
   const shadowIntensity = Math.min(scrollProgress * 2, 2);
+
+  const getPageTitle = () => {
+    const path = location.pathname;
+    if (path.includes('/upload')) return 'Carica Documenti';
+    if (path.includes('/interview')) return 'Intervista AI';
+    if (path.includes('/report')) return 'Report';
+    return '';
+  };
+
+  const pageTitle = getPageTitle();
 
   return (
     <>
@@ -97,27 +102,43 @@ const Header = () => {
         <div className="container mx-auto px-6 py-3 lg:py-4">
           <div className="flex items-center justify-between">
             
-            {/* Logo - Updated click handler */}
-            <motion.div 
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="cursor-pointer group relative"
-              onClick={handleLogoClick}
-            >
-              <img 
-                src={homeBuildAILogo} 
-                alt="HomeBuildAI - Il tuo alleato AI per ristrutturazioni" 
-                className="h-14 md:h-16 lg:h-18 w-auto object-contain transition-all duration-300 drop-shadow-lg"
-                style={{
-                  filter: `drop-shadow(0 4px 8px rgba(0, 0, 0, ${0.2 * scrollProgress}))`
-                }}
-              />
-              {/* Hover effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-accent/10 to-primary/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm -z-10"></div>
-            </motion.div>
+            {/* Logo and Page Title */}
+            <div className="flex items-center gap-4">
+              <motion.div 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="cursor-pointer group relative"
+                onClick={handleLogoClick}
+              >
+                <img 
+                  src={homeBuildAILogo} 
+                  alt="HomeBuildAI - Il tuo alleato AI per ristrutturazioni" 
+                  className="h-14 md:h-16 lg:h-18 w-auto object-contain transition-all duration-300 drop-shadow-lg"
+                  style={{
+                    filter: `drop-shadow(0 4px 8px rgba(0, 0, 0, ${0.2 * scrollProgress}))`
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-accent/10 to-primary/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm -z-10"></div>
+              </motion.div>
+              
+              {/* Show page title on non-home pages */}
+              {!isHomePage && pageTitle && (
+                <motion.div
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="hidden md:block"
+                >
+                  <div className="h-8 w-px bg-gray-300 mx-2"></div>
+                  <span className="text-lg font-semibold text-gray-700">
+                    {pageTitle}
+                  </span>
+                </motion.div>
+              )}
+            </div>
             
             {/* Desktop Navigation */}
             <nav className="hidden lg:flex items-center space-x-1">
+              {/* Only show nav items on home page */}
               {navItems.map((item, index) => {
                 const Icon = item.icon;
                 return (
@@ -138,7 +159,6 @@ const Header = () => {
                         : `rgba(255, 255, 255, ${1 - (scrollProgress * 0.8)})`
                     }}
                   >
-                    {/* Background hover effect */}
                     <div 
                       className="absolute inset-0 rounded-2xl transition-all duration-300"
                       style={{
@@ -151,7 +171,6 @@ const Header = () => {
                     <Icon className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
                     <span>{item.label}</span>
                     
-                    {/* Active indicator */}
                     <AnimatePresence>
                       {isActive(item.href) && (
                         <motion.div
@@ -166,7 +185,7 @@ const Header = () => {
                 );
               })}
               
-              {/* CTA Button */}
+              {/* CTA Button - Different text based on page */}
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -176,11 +195,27 @@ const Header = () => {
                   variant="default" 
                   size="lg"
                   className="bg-gradient-to-r from-accent to-accent/90 hover:from-accent/90 hover:to-accent text-white shadow-2xl rounded-2xl px-8 py-6 font-bold group transition-all duration-300 hover:scale-105 hover:shadow-3xl border-0"
-                  onClick={() => navigate('/upload')}
+                  onClick={() => {
+                    if (isHomePage) {
+                      navigate('/upload');
+                    } else {
+                      // On other pages, go back to home
+                      navigate('/');
+                    }
+                  }}
                 >
-                  <Calculator className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
-                  Inizia gratis
-                  <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
+                  {isHomePage ? (
+                    <>
+                      <Calculator className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
+                      Inizia gratis
+                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
+                    </>
+                  ) : (
+                    <>
+                      <Home className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
+                      Torna alla Home
+                    </>
+                  )}
                 </Button>
               </motion.div>
             </nav>
@@ -241,6 +276,7 @@ const Header = () => {
               className="lg:hidden bg-white/95 backdrop-blur-xl border-t border-border/50 shadow-2xl"
             >
               <div className="container mx-auto px-6 py-6 space-y-4">
+                {/* Only show nav items on home page */}
                 {navItems.map((item, index) => {
                   const Icon = item.icon;
                   return (
@@ -270,13 +306,26 @@ const Header = () => {
                     size="lg"
                     className="w-full bg-gradient-to-r from-accent to-accent/90 hover:from-accent/90 hover:to-accent text-white shadow-2xl rounded-2xl py-6 font-bold group transition-all duration-300"
                     onClick={() => {
-                      navigate('/upload');
+                      if (isHomePage) {
+                        navigate('/upload');
+                      } else {
+                        navigate('/');
+                      }
                       setIsMobileMenuOpen(false);
                     }}
                   >
-                    <Calculator className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
-                    Inizia gratis
-                    <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
+                    {isHomePage ? (
+                      <>
+                        <Calculator className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
+                        Inizia gratis
+                        <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
+                      </>
+                    ) : (
+                      <>
+                        <Home className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
+                        Torna alla Home
+                      </>
+                    )}
                   </Button>
                 </motion.div>
               </div>

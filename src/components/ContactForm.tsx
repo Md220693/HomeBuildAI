@@ -125,11 +125,6 @@ const ContactForm = ({ leadId, onSuccess, initialEmail }: ContactFormProps) => {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-        toast({
-          title: "Stima generata con successo",
-          description: "Controlla la tua email per il capitolato PDF"
-        });
-
       onSuccess();
     } catch (error) {
       console.error('Error verifying OTP:', error);

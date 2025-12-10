@@ -77,7 +77,6 @@ async function generatePDF(lead: any, capitolatoResponse: any) {
 
   y -= 25;
 
-  // BASIC INFO
   page.drawText("Informazioni Lead", {
     x: 40,
     y,
@@ -173,7 +172,7 @@ async function generatePDF(lead: any, capitolatoResponse: any) {
 }
 
 
-async function sendEmailWithPDF(toEmail: string, userName: string, pdfUrl: string) {
+async function sendEmailWithPDF(toEmail: string, userName: string, lead: any, pdfUrl: string) {
   const apiKey = Deno.env.get("POSTMARK_SERVER_TOKEN");
   const sender = Deno.env.get("POSTMARK_SENDER_EMAIL");
 
@@ -187,29 +186,89 @@ async function sendEmailWithPDF(toEmail: string, userName: string, pdfUrl: strin
     From: `HomeBuildAI <${sender}>`,
     To: toEmail,
     Subject: "Il tuo Capitolato Tecnico è pronto",
-    HtmlBody: `
-      <p>Ciao ${userName},</p>
-      <p>Il tuo capitolato tecnico è stato generato con successo.</p>
-      <p>Puoi scaricare il documento cliccando sul link qui sotto:</p>
-      <p><a href="${pdfUrl}" style="font-weight: bold;">📄 Scarica il Capitolato Tecnico</a></p>
-      <p>Per qualsiasi domanda o necessità, siamo a tua disposizione.</p>
-      <br/>
-      <p>Un saluto,<br/>Il team di HomeBuildAI</p>
-      <img src="https://ibzrnleunnfjyddyjkxg.supabase.co/storage/v1/object/public/email-assets/homebuilsignature.png" alt="HomeBuildAI" width="120" style="margin-top: 10px;" />
-    `,
+HtmlBody: `
+<html>
+  <body style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
+    <div style="text-align: center; margin-bottom: 30px;">
+      <h1 style="color: #2563eb; font-size: 24px; margin-bottom: 10px;">
+        🏠 HomeBuildAI
+      </h1>
+      <p style="color: #4b5563; font-size: 16px;">
+        Il tuo partner per ristrutturazioni intelligenti
+      </p>
+    </div>
+
+    <h2 style="color: #1e40af;">Buongiorno ${userName || 'Cliente'},</h2>
+    <p style="color: #374151; line-height: 1.6;">
+      Il tuo capitolato tecnico personalizzato è pronto.
+    </p>
+
+    <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; border-left: 4px solid #2563eb; margin: 20px 0;">
+      <h3 style="color: #1e40af; margin-top: 0;">📋 Dettagli del progetto:</h3>
+      <ul style="color: #374151; padding-left: 20px;">
+        <li style="margin-bottom: 8px;"><strong>Stima del progetto:</strong> €${lead.cost_estimate_min?.toLocaleString('it-IT') || '0'} - €${lead.cost_estimate_max?.toLocaleString('it-IT') || '0'}</li>
+        <li style="margin-bottom: 8px;"><strong>Affidabilità stima:</strong> ${Math.round((lead.confidence || 0.75) * 100)}%</li>
+        <li style="margin-bottom: 8px;"><strong>Data generazione:</strong> ${new Date(lead.updated_at || lead.created_at).toLocaleDateString('it-IT')}</li>
+      </ul>
+    </div>
+
+    <p style="color: #374151; line-height: 1.6;">
+      Puoi scaricare il PDF cliccando il link qui sotto:
+    </p>
+
+    <p>
+      <a href="${pdfUrl}" style="font-size: 16px; color: #1e3a8a; font-weight: bold; text-decoration: underline;">
+        📄 Scarica il tuo Capitolato Tecnico
+      </a>
+    </p>
+
+    <div style="margin-top: 30px; padding: 20px; background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 6px;">
+      <h4 style="color: #92400e; margin-top: 0;">⚠️ Importante</h4>
+      <p style="color: #92400e; margin-bottom: 0; line-height: 1.6;">
+        ${lead.disclaimer || 'La stima è indicativa e basata sui dati forniti. È necessario un sopralluogo per preventivo vincolante.'}
+      </p>
+    </div>
+
+    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center;">
+      <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
+        <strong>Il Team HomeBuildAI</strong><br>
+        📧 info@homebuildai.site | 🌐 www.homebuildai.site
+      </p>
+      <p style="color: #9ca3af; font-size: 12px; margin-top: 20px;">
+        Questo è un messaggio automatico, si prega di non rispondere a questa email.
+      </p>
+      <img src="https://ibzrnleunnfjyddyjkxg.supabase.co/storage/v1/object/public/email-assets/homebuildsig.JPG" 
+           alt="HomeBuildAI" 
+           style="width: 220px; max-width: 220px; display: block; margin: 0 auto; margin-top: 10px;" />
+    </div>
+  </body>
+</html>
+`,
+
     TextBody: `
-  Ciao ${userName},
+Buongiorno ${userName || 'Cliente'},
 
-  Il tuo capitolato tecnico è stato generato con successo.
+Il tuo capitolato tecnico personalizzato è pronto.
 
-  Puoi scaricare il PDF dal seguente link:
-  ${pdfUrl}
+Dettagli del progetto:
+- Stima del progetto: €${lead.cost_estimate_min?.toLocaleString('it-IT') || '0'} - €${lead.cost_estimate_max?.toLocaleString('it-IT') || '0'}
+- Affidabilità stima: ${Math.round((lead.confidence || 0.75) * 100)}%
+- Data generazione: ${new Date(lead.updated_at || lead.created_at).toLocaleDateString('it-IT')}
 
-  Per qualsiasi domanda, siamo a tua disposizione.
+Scarica il PDF dal seguente link:
+${pdfUrl}
 
-  Un saluto,
-  Il team di HomeBuildAI
-    `,
+IMPORTANTE:
+${lead.disclaimer || 'La stima è indicativa e basata sui dati forniti. È necessario un sopralluogo per preventivo vincolante.'}
+
+--
+Il Team HomeBuildAI
+info@homebuildai.site
+www.homebuildai.site
+
+Questo è un messaggio automatico, si prega di non rispondere.
+`,
+
     Tag: "capitolato",
   };
 
