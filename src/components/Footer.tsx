@@ -23,14 +23,17 @@ const Footer = () => {
           >
             <div className="mb-6">
               <img 
-                src={homeBuildAILogo} 
+                src={homeBuildAILogo}
                 alt="HomeBuildAI - Il tuo alleato AI per ristrutturazioni" 
                 className="h-10 w-auto object-contain mb-4"
               />
               <p className="text-gray-300 leading-relaxed mb-6 text-sm">
                 Il tuo alleato intelligente per ristrutturazioni.
                 <br /><br />
-                <strong className="text-white font-medium">Rapido, gratuito ed efficace</strong> - basato su oltre 15.000 preventivi reali.
+                <strong className="text-white font-medium">
+                  Rapido, gratuito ed efficace
+                </strong>{" "}
+                - basato su oltre 15.000 preventivi reali.
               </p>
             </div>
             <div className="space-y-2 text-gray-300 text-sm">
@@ -119,7 +122,7 @@ const Footer = () => {
           </motion.div>
         </div>
         
-        {/* Bottom Section with Contacts */}
+        {/* Bottom Section */}
         <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
@@ -127,25 +130,16 @@ const Footer = () => {
           viewport={{ once: true }}
           className="border-t border-gray-800 pt-8"
         >
-          {/* Copyright and Made in Italy */}
+          {/* Copyright */}
           <div className="flex flex-col lg:flex-row justify-between items-center gap-4 mb-6">
             <p className="text-gray-500 text-sm">
-              © 2024 HomeBuildAI. Tutti i diritti riservati.
+              © {currentYear} HomeBuildAI. Tutti i diritti riservati.
             </p>
-            
-            <div className="flex items-center gap-4 text-sm text-gray-400">
-              <span className="flex items-center gap-1">
-                <span className="text-red-400">♥</span>
-                Made in Italy
-              </span>
-              <span>•</span>
-              <span>Dati protetti</span>
-              <span>•</span>
-              <span>Powered by AI</span>
-            </div>
+
+            {/* Removed the Made in Italy / Dati Protetti / Powered by AI line */}
           </div>
           
-          {/* Company Details - Centered as in image */}
+          {/* Company Details */}
           <div className="border-t border-gray-800 pt-6">
             <div className="flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8 text-sm text-gray-500">
               <div className="text-center md:text-left">
