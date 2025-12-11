@@ -77,7 +77,6 @@ async function generatePDF(lead: any, capitolatoResponse: any) {
 
   y -= 25;
 
-  // BASIC INFO
   page.drawText("Informazioni Lead", {
     x: 40,
     y,
