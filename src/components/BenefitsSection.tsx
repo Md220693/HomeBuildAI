@@ -153,7 +153,10 @@ const BenefitsSection = () => {
           viewport={{ once: true }}
           className="mt-20 text-center"
         >
-          <div className="inline-flex items-center divide-x divide-gray-300 bg-white border border-gray-200 rounded-lg px-8 py-6 shadow-sm">
+            <div className="flex flex-col sm:flex-row items-center justify-center 
+                divide-y sm:divide-y-0 sm:divide-x divide-gray-300 
+                bg-white border border-gray-200 rounded-lg 
+                px-6 py-4 sm:px-8 sm:py-6 shadow-sm">
             
             <div className="text-center px-6">
               <div className="text-2xl font-bold text-gray-900 mb-1">

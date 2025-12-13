@@ -16,6 +16,9 @@ import AdminAuth from "./pages/AdminAuth";
 import AITrainer from "./pages/AITrainer";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
+import ComeFunzionaPage from "@/pages/ComeFunziona";
+import PercheSceglierciPage from "@/pages/PercheSceglierci";
+import Header from "@/components/Header"; 
 
 const queryClient = new QueryClient();
 
@@ -25,7 +28,11 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <Header />
+        <main className="pt-20 lg:pt-24">
         <Routes>
+          <Route path="/come-funziona" element={<ComeFunzionaPage />} />
+          <Route path="/vantaggi" element={<PercheSceglierciPage />} />
           <Route path="/" element={<Index />} />
           <Route path="/upload" element={<Upload />} />
           <Route path="/interview" element={<Interview />} />
@@ -61,6 +68,7 @@ const App = () => (
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </main>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
