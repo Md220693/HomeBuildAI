@@ -38,7 +38,7 @@ const PremiumOverview = () => {
   ];
 
   return (
-    <section className="pt-28 pb-8 bg-white">
+    <section className="pt-16 pb-8 bg-white">
       <div className="container max-w-6xl">
 
         {/* HEADER */}

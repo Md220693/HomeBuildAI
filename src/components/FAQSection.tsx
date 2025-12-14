@@ -105,7 +105,7 @@ const FAQSection = () => {
   };
 
   return (
-    <section className="py-20 bg-white relative overflow-hidden">
+    <section className="py-6 bg-white relative overflow-hidden">
       
       <div className="container relative max-w-4xl">
         
