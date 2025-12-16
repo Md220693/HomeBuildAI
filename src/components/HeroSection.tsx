@@ -24,13 +24,11 @@ const HeroSection = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
 
-  // Desktop & Mobile image arrays
   const desktopImages = [img1, img2, img3, img4, img5, img6, img7].filter(Boolean);
   const mobileImages = [mImg1, mImg2, mImg3, mImg4, mImg5, mImg6, mImg7].filter(Boolean);
 
   const heroImages = isMobile ? mobileImages : desktopImages;
 
-  // Detect screen size
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
@@ -38,7 +36,6 @@ const HeroSection = () => {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Auto slide
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % heroImages.length);
@@ -46,7 +43,6 @@ const HeroSection = () => {
     return () => clearInterval(interval);
   }, [heroImages.length]);
 
-  // Preload next image
   useEffect(() => {
     const next = new Image();
     next.src = heroImages[(currentSlide + 1) % heroImages.length];
@@ -54,7 +50,6 @@ const HeroSection = () => {
 
   return (
     <section className="relative min-h-[600px] md:min-h-[700px] flex items-center overflow-hidden">
-      {/* Background Slideshow */}
       <div className="absolute inset-0">
         {heroImages.map((image, index) => (
           <div
@@ -72,7 +67,6 @@ const HeroSection = () => {
         ))}
       </div>
 
-      {/* CONTENT */}
       <div className="container relative z-10 py-20 md:py-32">
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-accent/20 backdrop-blur-sm rounded-full px-5 py-2.5 mb-8 text-sm font-semibold text-white border border-accent/30">

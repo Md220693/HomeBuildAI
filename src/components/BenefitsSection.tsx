@@ -71,12 +71,10 @@ const BenefitsSection = () => {
   return (
     <section id="vantaggi" className="py-20 bg-white relative overflow-hidden scroll-mt-24">
       
-      {/* Minimal background */}
       <div className="absolute inset-0 bg-gradient-to-b from-gray-50/50 to-white"></div>
       
       <div className="container relative max-w-6xl">
         
-        {/* Professional Header */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -95,7 +93,6 @@ const BenefitsSection = () => {
           </p>
         </motion.div>
         
-        {/* Clean Benefits Grid */}
         <motion.div 
           variants={containerVariants}
           initial="hidden"
@@ -112,13 +109,11 @@ const BenefitsSection = () => {
                 
                 <div className="relative z-10">
                   
-                  {/* Clean Icon */}
                   <div className="flex items-center gap-4 mb-6">
                     <div className={`w-12 h-12 rounded-lg ${benefit.iconBg} flex items-center justify-center`}>
                       <benefit.icon className={`h-6 w-6 ${benefit.color}`} />
                     </div>
                     
-                    {/* Number Display */}
                     <div>
                       <div className={`text-2xl font-bold ${benefit.color}`}>
                         {benefit.number}
@@ -129,7 +124,6 @@ const BenefitsSection = () => {
                     </div>
                   </div>
                   
-                  {/* Content */}
                   <div className="space-y-4">
                     <h3 className="text-xl font-semibold text-gray-900">
                       {benefit.title}
@@ -145,7 +139,6 @@ const BenefitsSection = () => {
           ))}
         </motion.div>
         
-        {/* Minimal Social Proof */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}

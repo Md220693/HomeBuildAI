@@ -43,7 +43,6 @@ const ProcessSteps = () => {
       
       <div className="container relative max-w-6xl">
         
-        {/* Professional Header */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -62,7 +61,6 @@ const ProcessSteps = () => {
           </p>
         </motion.div>
 
-        {/* Steps Grid */}
         <div className="relative max-w-5xl mx-auto">
           
           {/* Timeline Connector */}
@@ -70,7 +68,6 @@ const ProcessSteps = () => {
             <div className="absolute top-1/2 left-0 right-0 h-1 -translate-y-1/2 bg-gradient-to-r from-blue-500/20 via-emerald-500/20 to-amber-500/20 blur-sm"></div>
           </div>
 
-          {/* Steps Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {steps.map((step, index) => (
               <motion.div
@@ -82,20 +79,16 @@ const ProcessSteps = () => {
                 className="relative"
               >
                 
-                {/* Step Number */}
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-10 h-10 bg-white border-2 border-gray-300 text-gray-700 font-semibold rounded-full flex items-center justify-center shadow-sm z-10">
                   {index + 1}
                 </div>
 
-                {/* Step Card */}
                 <Card className="p-8 text-center rounded-xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-300">
                   
-                  {/* Icon */}
                   <div className={`w-16 h-16 rounded-xl ${step.iconBg} mx-auto mb-6 flex items-center justify-center border border-gray-100`}>
                     <step.icon className={`h-8 w-8 ${step.color}`} />
                   </div>
 
-                  {/* Content */}
                   <h3 className="text-xl font-semibold text-gray-900 mb-3">
                     {step.title}
                   </h3>
@@ -114,7 +107,6 @@ const ProcessSteps = () => {
           </div>
         </div>
 
-        {/* Time Summary */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}

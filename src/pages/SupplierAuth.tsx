@@ -132,7 +132,6 @@ const SupplierAuth = () => {
         return;
       }
 
-      // Verifica se esiste un profilo fornitore e se l'onboarding è completato
       const { data: supplierData, error: supplierError } = await supabase
         .from('suppliers')
         .select('onboarding_completato')
@@ -143,14 +142,11 @@ const SupplierAuth = () => {
         console.error('Error checking supplier status:', supplierError);
       }
 
-      // Determina il redirect corretto
       let finalRedirect = '/fornitori/dashboard';
       
       if (!supplierData) {
-        // Non esiste record fornitore → vai all'onboarding
         finalRedirect = '/fornitori/onboarding';
       } else if (!supplierData.onboarding_completato) {
-        // Onboarding non completato → vai all'onboarding
         finalRedirect = '/fornitori/onboarding';
       }
 
@@ -161,7 +157,6 @@ const SupplierAuth = () => {
           : "Benvenuto nella tua area riservata"
       });
 
-      // Usa navigate invece di hard redirect
       console.log('[SupplierAuth] Login successful, navigating to:', finalRedirect);
       navigate(finalRedirect, { replace: true });
 

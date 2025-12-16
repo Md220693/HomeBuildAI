@@ -38,7 +38,6 @@ const ContactForm = ({ leadId, onSuccess, initialEmail }: ContactFormProps) => {
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate required fields
     if (!contactData.nome || !contactData.cognome || !contactData.email || !contactData.telefono || !contactData.indirizzo) {
       toast({
         variant: "destructive",
@@ -48,7 +47,6 @@ const ContactForm = ({ leadId, onSuccess, initialEmail }: ContactFormProps) => {
       return;
     }
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(contactData.email)) {
       toast({
@@ -59,7 +57,6 @@ const ContactForm = ({ leadId, onSuccess, initialEmail }: ContactFormProps) => {
       return;
     }
 
-    // Validate phone format (basic Italian phone validation)
     const phoneRegex = /^(\+39|0039)?[\s]?([0-9]{2,3}[\s]?[0-9]{3,4}[\s]?[0-9]{3,4})$/;
     if (!phoneRegex.test(contactData.telefono.replace(/\s/g, ''))) {
       toast({
@@ -80,7 +77,6 @@ const ContactForm = ({ leadId, onSuccess, initialEmail }: ContactFormProps) => {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      // In development, show debug OTP
       if (data.debug_otp) {
         setDebugOtp(data.debug_otp);
       }
@@ -148,7 +144,6 @@ const ContactForm = ({ leadId, onSuccess, initialEmail }: ContactFormProps) => {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      // Update debug OTP
       if (data.debug_otp) {
         setDebugOtp(data.debug_otp);
       }
@@ -290,7 +285,6 @@ const ContactForm = ({ leadId, onSuccess, initialEmail }: ContactFormProps) => {
           il PDF con capitolato e stima al numero <strong>{contactData.telefono}</strong>
         </p>
         
-        {/* Development only - show debug OTP */}
         {debugOtp && (
           <div className="mt-4 p-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg shadow-sm">
             <div className="text-center">

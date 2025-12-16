@@ -147,7 +147,6 @@ export default function Interview() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input */}
             {!isComplete && (
               <div className="mt-4 flex gap-2">
                 <Input

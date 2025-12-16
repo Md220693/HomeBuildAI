@@ -7,13 +7,11 @@ const Footer = () => {
   return (
     <footer className="bg-gradient-to-b from-gray-900 to-gray-950 text-white relative overflow-hidden">
       
-      {/* Top Border */}
       <div className="h-1 bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700"></div>
       
       <div className="container relative py-12">
         <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-10 mb-12">
           
-          {/* Company Info */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -48,7 +46,6 @@ const Footer = () => {
             </div>
           </motion.div>
           
-          {/* I nostri servizi */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -82,7 +79,6 @@ const Footer = () => {
             </ul>
           </motion.div>
           
-          {/* Supporto e informazioni */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -122,7 +118,6 @@ const Footer = () => {
           </motion.div>
         </div>
         
-        {/* Bottom Section */}
         <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
@@ -130,16 +125,12 @@ const Footer = () => {
           viewport={{ once: true }}
           className="border-t border-gray-800 pt-8"
         >
-          {/* Copyright */}
           <div className="flex flex-col lg:flex-row justify-between items-center gap-4 mb-6">
             <p className="text-gray-500 text-sm">
               © {currentYear} HomeBuildAI. Tutti i diritti riservati.
             </p>
-
-            {/* Removed the Made in Italy / Dati Protetti / Powered by AI line */}
           </div>
           
-          {/* Company Details */}
           <div className="border-t border-gray-800 pt-6">
             <div className="flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8 text-sm text-gray-500">
               <div className="text-center md:text-left">

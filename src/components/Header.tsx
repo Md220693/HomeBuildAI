@@ -12,7 +12,6 @@ const Header = () => {
 
   const isHomePage = location.pathname === "/";
 
-  // Detect scrolling
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
@@ -22,7 +21,6 @@ const Header = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // NEW: Real page navigation
   const navItems = [
     { to: "/come-funziona", label: "Come funziona", icon: Calculator },
     { to: "/vantaggi", label: "Perché sceglierci", icon: Star },
@@ -53,7 +51,6 @@ const Header = () => {
             />
           </div>
 
-          {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-6">
             {navItems.map((item, index) => {
               const Icon = item.icon;
@@ -93,7 +90,6 @@ const Header = () => {
             </Button>
           </nav>
 
-          {/* Mobile Menu Button */}
           <button
             className="lg:hidden p-3 rounded-xl border bg-white/95 backdrop-blur-sm"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -102,7 +98,6 @@ const Header = () => {
           </button>
         </div>
 
-        {/* Mobile Menu */}
         {isMobileMenuOpen && (
           <div className="lg:hidden bg-white shadow-md border-t">
             <div className="px-6 py-6 space-y-4 flex flex-col items-center">

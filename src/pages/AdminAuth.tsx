@@ -25,7 +25,6 @@ const AdminAuth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // Check if user is admin and redirect or show error
   useEffect(() => {
     const checkAdminRole = async () => {
       if (!loading && user) {

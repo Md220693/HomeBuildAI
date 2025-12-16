@@ -98,7 +98,6 @@ const SupplierDashboard = () => {
 
       if (error) {
         if (error.code === 'PGRST116') {
-          // No profile found - redirect to onboarding
           navigate('/fornitori/onboarding');
         } else {
           throw error;
@@ -211,7 +210,6 @@ const SupplierDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
-      {/* Header */}
       <header className="bg-white border-b">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -244,7 +242,6 @@ const SupplierDashboard = () => {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="container mx-auto px-6 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">
@@ -264,7 +261,6 @@ const SupplierDashboard = () => {
             <TabsTrigger value="impostazioni">Impostazioni</TabsTrigger>
           </TabsList>
 
-          {/* Nuovi Lead Tab */}
           <TabsContent value="nuovi-lead" className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold">Lead Disponibili</h2>
@@ -292,7 +288,6 @@ const SupplierDashboard = () => {
             )}
           </TabsContent>
 
-          {/* Lead Acquistati Tab */}
           <TabsContent value="acquistati" className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold">Lead Acquistati</h2>
@@ -314,7 +309,6 @@ const SupplierDashboard = () => {
             </div>
           </TabsContent>
 
-          {/* Storico Tab */}
           <TabsContent value="storico" className="space-y-4">
             <h2 className="text-2xl font-bold">Storico Lead</h2>
             <div className="grid gap-4">
@@ -333,7 +327,6 @@ const SupplierDashboard = () => {
             </div>
           </TabsContent>
 
-          {/* Pagamenti Tab */}
           <TabsContent value="pagamenti" className="space-y-4">
             <h2 className="text-2xl font-bold">Pagamenti</h2>
             <Card>
@@ -344,11 +337,9 @@ const SupplierDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* Impostazioni Tab */}
           <TabsContent value="impostazioni" className="space-y-4">
             <h2 className="text-2xl font-bold">Impostazioni Profilo</h2>
             
-            {/* Profilo Aziendale */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
@@ -421,7 +412,6 @@ const SupplierDashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Stato Account */}
             <Card>
               <CardHeader>
                 <CardTitle>Stato Account</CardTitle>
@@ -458,12 +448,10 @@ const SupplierDashboard = () => {
   );
 };
 
-// Lead Card Component
 const LeadCard = ({ supplierLead, showContacts }: { supplierLead: SupplierLead; showContacts: boolean }) => {
   const { toast } = useToast();
   const lead = supplierLead.leads;
   
-  // Extract info from interview_data and capitolato_data
   const getLeadInfo = () => {
     const interviewData = lead.interview_data || {};
     const capitolatoData = lead.capitolato_data || {};
@@ -481,7 +469,6 @@ const LeadCard = ({ supplierLead, showContacts }: { supplierLead: SupplierLead; 
   
   const handlePurchaseLead = async () => {
     try {
-      // Check if lead can still be purchased
       const { data: leadData, error: leadError } = await supabase
         .from('leads')
         .select('assignment_type, max_assignments, current_assignments')
@@ -489,8 +476,6 @@ const LeadCard = ({ supplierLead, showContacts }: { supplierLead: SupplierLead; 
         .single();
 
       if (leadError) throw leadError;
-
-      // Check purchase eligibility
       if (leadData.assignment_type === 'exclusive' && leadData.current_assignments > 0) {
         toast({
           variant: "destructive",
@@ -509,7 +494,6 @@ const LeadCard = ({ supplierLead, showContacts }: { supplierLead: SupplierLead; 
         return;
       }
 
-      // Update supplier_lead status to purchased
       const { error: purchaseError } = await supabase
         .from('supplier_leads')
         .update({ 
@@ -520,7 +504,6 @@ const LeadCard = ({ supplierLead, showContacts }: { supplierLead: SupplierLead; 
 
       if (purchaseError) throw purchaseError;
 
-      // Increment lead assignments count
       const { error: updateError } = await supabase
         .from('leads')
         .update({ 
@@ -530,7 +513,6 @@ const LeadCard = ({ supplierLead, showContacts }: { supplierLead: SupplierLead; 
 
       if (updateError) throw updateError;
 
-      // If exclusive lead, mark all other assignments as expired
       if (leadData.assignment_type === 'exclusive') {
         await supabase
           .from('supplier_leads')
@@ -545,7 +527,6 @@ const LeadCard = ({ supplierLead, showContacts }: { supplierLead: SupplierLead; 
         description: "Hai acquistato con successo questo lead. Ora puoi vedere i contatti del cliente."
       });
 
-      // Refresh leads
       window.location.reload();
 
     } catch (error) {
@@ -694,7 +675,6 @@ const LeadCard = ({ supplierLead, showContacts }: { supplierLead: SupplierLead; 
           </div>
         )}
 
-        {/* Actions */}
         {supplierLead.status === 'offered' && !isExpired && (
           <div className="flex gap-2 pt-2">
             <Button onClick={handlePurchaseLead} className="flex-1">

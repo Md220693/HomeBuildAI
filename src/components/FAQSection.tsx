@@ -109,7 +109,6 @@ const FAQSection = () => {
       
       <div className="container relative max-w-4xl">
         
-        {/* Professional Header */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -128,7 +127,6 @@ const FAQSection = () => {
           </p>
         </motion.div>
 
-        {/* Clean FAQ Grid */}
         <motion.div 
           variants={containerVariants}
           initial="hidden"
@@ -152,7 +150,6 @@ const FAQSection = () => {
                       <faq.icon className={`h-5 w-5 ${faq.color}`} />
                     </div>
                     
-                    {/* Question */}
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold text-gray-900 pr-4">
                         {faq.question}
@@ -160,7 +157,6 @@ const FAQSection = () => {
                     </div>
                   </div>
                   
-                  {/* Chevron */}
                   <motion.div
                     animate={{ rotate: openIndex === index ? 180 : 0 }}
                     transition={{ duration: 0.3 }}
@@ -174,7 +170,6 @@ const FAQSection = () => {
                   </motion.div>
                 </button>
                 
-                {/* Answer */}
                 <AnimatePresence>
                   {openIndex === index && (
                     <motion.div
@@ -212,7 +207,6 @@ const FAQSection = () => {
           ))}
         </motion.div>
 
-        {/* Clean Contact Section */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -222,7 +216,6 @@ const FAQSection = () => {
         >
           <div className="space-y-6">
             
-            {/* Header */}
             <div className="text-center">
               <h3 className="text-2xl font-semibold text-gray-900 mb-2">
                 Altre domande?
@@ -232,7 +225,6 @@ const FAQSection = () => {
               </p>
             </div>
             
-            {/* Info Box */}
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center">
               <div className="flex items-center justify-center gap-2 mb-4">
                 <CheckCircle className="h-5 w-5 text-gray-600" />
@@ -251,7 +243,6 @@ const FAQSection = () => {
               </div>
             </div>
             
-            {/* Email */}
             <div className="bg-white border border-gray-200 rounded-xl p-6 text-center">
               <p className="text-gray-700 text-sm mb-3">
                 Scrivici a

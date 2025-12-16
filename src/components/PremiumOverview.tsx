@@ -41,7 +41,6 @@ const PremiumOverview = () => {
     <section className="pt-16 pb-8 bg-white">
       <div className="container max-w-6xl">
 
-        {/* HEADER */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -65,7 +64,6 @@ const PremiumOverview = () => {
           </p>
         </motion.div>
 
-        {/* VALUE GRID */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -119,7 +117,6 @@ const PremiumOverview = () => {
           </div>
         </motion.div>
 
-        {/* TESTIMONIAL */}
         <motion.blockquote
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
@@ -136,7 +133,6 @@ const PremiumOverview = () => {
           </span>
         </motion.blockquote>
 
-        {/* FEATURE CARDS */}
         <motion.div className="grid md:grid-cols-2 gap-5 max-w-5xl mx-auto mb-10">
           {items.map((item, index) => {
             const Icon = item.icon;
@@ -160,7 +156,6 @@ const PremiumOverview = () => {
           })}
         </motion.div>
 
-        {/* CTA */}
         <motion.div className="text-center">
           <h3 className="text-xl md:text-2xl font-semibold text-gray-900 mb-4">
             Prenditi 5 minuti. Dai valore al tuo progetto.
