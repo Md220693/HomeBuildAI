@@ -14,11 +14,16 @@ import AdminSuppliersTable from "@/components/admin/AdminSuppliersTable";
 import AdminPricingRules from "@/components/admin/AdminPricingRules";
 import AdminPaymentLogs from "@/components/admin/AdminPaymentLogs";
 import AdminNotifications from "@/components/admin/AdminNotifications";
+import { useAdminGuard } from "@/hooks/useAdminGuard";
+import { LogOut } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const AdminConsole = () => {
+  useAdminGuard();
   const [activeTab, setActiveTab] = useState("overview");
   const navigate = useNavigate();
   const stats = useAdminStats();
+  const [loggingOut, setLoggingOut] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
@@ -39,6 +44,20 @@ const AdminConsole = () => {
               <Brain className="w-5 h-5 mr-2" />
               AI Trainer
             </Button>
+            <Button
+              variant="outline"
+              disabled={loggingOut}
+              className="text-red-600 border-red-200 hover:bg-red-50"
+              onClick={async () => {
+                setLoggingOut(true);
+                await supabase.auth.signOut();
+                navigate("/");
+              }}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              {loggingOut ? "Uscita..." : "Logout"}
+            </Button>
+
           </div>
         </div>
 

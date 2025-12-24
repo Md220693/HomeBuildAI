@@ -75,7 +75,7 @@ const AdminAuth = () => {
       }
 
       toast.success("Accesso effettuato con successo!");
-      navigate('/admin');
+      //navigate('/admin');
     } catch (error) {
       console.error('Errore durante l\'accesso:', error);
       toast.error("Si è verificato un errore durante l'accesso");
