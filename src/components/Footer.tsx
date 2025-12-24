@@ -112,7 +112,12 @@ const Footer = () => {
                 <span className="cursor-default">Termini di Servizio</span>
               </li>
               <li className="pt-2">
-                <span className="text-gray-500 text-xs">Admin</span>
+                <a
+                  href="/admin"
+                  className="text-gray-500 text-xs hover:text-gray-300 transition-colors"
+                >
+                  Admin
+                </a>              
               </li>
             </ul>
           </motion.div>
