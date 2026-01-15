@@ -14,12 +14,12 @@ import AdminSuppliersTable from "@/components/admin/AdminSuppliersTable";
 import AdminPricingRules from "@/components/admin/AdminPricingRules";
 import AdminPaymentLogs from "@/components/admin/AdminPaymentLogs";
 import AdminNotifications from "@/components/admin/AdminNotifications";
-import { useAdminGuard } from "@/hooks/useAdminGuard";
+//import { useAdminGuard } from "@/hooks/useAdminGuard";
 import { LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 const AdminConsole = () => {
-  useAdminGuard();
+ // useAdminGuard();
   const [activeTab, setActiveTab] = useState("overview");
   const navigate = useNavigate();
   const stats = useAdminStats();
