@@ -3,16 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Bell, FileText, User, LogOut } from "lucide-react";
+import { Bell, FileText, User, LogOut, Edit2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 import SupplierNotifications from "@/components/supplier/SupplierNotifications";
+import SupplierProfileForm from "@/components/supplier/SupplierProfileForm";
 
 const SupplierConsole = () => {
   const [activeTab, setActiveTab] = useState("leads");
   const [leads, setLeads] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>(null);
+  const [editMode, setEditMode] = useState(false);
 
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -23,7 +25,6 @@ const SupplierConsole = () => {
   }, [user]);
 
   const loadData = async () => {
-    /* -------- PROFILE -------- */
     const { data: supplier } = await supabase
       .from("suppliers")
       .select("*")
@@ -37,7 +38,6 @@ const SupplierConsole = () => {
 
     setProfile(supplier);
 
-    /* -------- LEADS -------- */
     const { data: leadsData } = await supabase
       .from("supplier_leads")
       .select(`
@@ -56,9 +56,15 @@ const SupplierConsole = () => {
     setLeads(leadsData || []);
   };
 
+  const handleProfileSave = (updatedSupplier: any) => {
+    setProfile(updatedSupplier);
+    setEditMode(false);
+  };
+
+  const handleProfileCancel = () => setEditMode(false);
+
   return (
     <div className="min-h-screen bg-background">
-      {/* HEADER */}
       <header className="border-b bg-white">
         <div className="container py-4 flex justify-between items-center">
           <h1 className="text-xl font-bold">Portale Fornitore</h1>
@@ -75,7 +81,6 @@ const SupplierConsole = () => {
         </div>
       </header>
 
-      {/* MAIN */}
       <main className="container py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid grid-cols-3 max-w-xl">
@@ -108,9 +113,7 @@ const SupplierConsole = () => {
             {leads.map((l) => (
               <Card key={l.id} className="mt-4">
                 <CardHeader>
-                  <CardTitle>
-                    Lead #{l.leads.id.slice(0, 8)}
-                  </CardTitle>
+                  <CardTitle>Lead #{l.leads.id.slice(0, 8)}</CardTitle>
                 </CardHeader>
 
                 <CardContent>
@@ -118,8 +121,7 @@ const SupplierConsole = () => {
                     <b>Zona:</b> {l.leads.interview_data?.location || "—"}
                   </p>
                   <p>
-                    <b>Budget:</b>{" "}
-                    €{l.leads.cost_estimate_min} – €
+                    <b>Budget:</b> €{l.leads.cost_estimate_min} – €
                     {l.leads.cost_estimate_max}
                   </p>
                 </CardContent>
@@ -135,14 +137,37 @@ const SupplierConsole = () => {
           {/* PROFILE */}
           <TabsContent value="profile">
             <Card>
-              <CardHeader>
+              <CardHeader className="flex justify-between items-center">
                 <CardTitle>Profilo</CardTitle>
+                {!editMode && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setEditMode(true)}
+                  >
+                    <Edit2 className="h-4 w-4 mr-1" /> Modifica
+                  </Button>
+                )}
               </CardHeader>
+
               <CardContent>
-                <p><b>Nome:</b> {profile?.first_name}</p>
-                <p><b>Cognome:</b> {profile?.last_name}</p>
-                <p><b>Telefono:</b> {profile?.telefono || "—"}</p>
-                <p><b>Sito:</b> {profile?.sito_web || "—"}</p>
+                {editMode ? (
+                  <SupplierProfileForm
+                    supplier={profile}
+                    onSave={handleProfileSave}
+                    onCancel={handleProfileCancel}
+                  />
+                ) : (
+                  <div className="space-y-2">
+                    <p><b>Nome:</b> {profile?.first_name}</p>
+                    <p><b>Cognome:</b> {profile?.last_name}</p>
+                    <p><b>Telefono:</b> {profile?.telefono || "—"}</p>
+                    <p><b>Ragione Sociale:</b> {profile?.ragione_sociale || "—"}</p>
+                    <p><b>Partita IVA:</b> {profile?.partita_iva || "—"}</p>
+                    <p><b>Sito web:</b> {profile?.sito_web || "—"}</p>
+                    <p><b>Zona Operativa:</b> {profile?.zona_operativa?.join(", ") || "—"}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

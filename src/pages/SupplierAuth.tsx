@@ -36,8 +36,8 @@ export default function SupplierAuth() {
     }
 
     toast({
-      title: "Check your email",
-      description: "We sent you a verification link.",
+      title: "Controlla la tua email",
+      description: "Ti abbiamo inviato un link di verifica",
     });
   };
 
